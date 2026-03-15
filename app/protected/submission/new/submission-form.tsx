@@ -442,16 +442,17 @@ export function SubmissionForm() {
                 onRemove={removePhoto}
                 uploading={uploadingPhoto}
               />
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setShowCameraPermissionUI(true)}
                   disabled={uploadingPhoto}
+                  className="w-full sm:w-auto"
                 >
-                  <Camera className="w-4 h-4 mr-2" />
-                  Add photo (camera)
+                  <Camera className="w-4 h-4 mr-2 shrink-0" />
+                  Camera
                 </Button>
                 <Button
                   type="button"
@@ -459,9 +460,10 @@ export function SubmissionForm() {
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingPhoto}
+                  className="w-full sm:w-auto"
                 >
-                  <ImageIcon className="w-4 h-4 mr-2" />
-                  Add photo (upload)
+                  <ImageIcon className="w-4 h-4 mr-2 shrink-0" />
+                  Upload
                 </Button>
               </div>
             </div>
@@ -497,7 +499,7 @@ export function SubmissionForm() {
                 onClick={() => fileInputRef.current?.click()}
               >
                 <ImageIcon className="w-4 h-4 mr-2" />
-                Or choose photo from device
+                Choose from device
               </Button>
             </div>
           )}
