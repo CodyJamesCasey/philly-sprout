@@ -299,7 +299,9 @@ export function SubmissionForm() {
     setRequestingCamera(true);
     setPhotoError(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+      });
       setShowCameraPermissionUI(false);
       setCameraStream(stream);
     } catch (err) {
