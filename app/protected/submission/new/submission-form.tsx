@@ -390,7 +390,7 @@ export function SubmissionForm() {
                     }}
                   >
                     <Camera className="w-4 h-4 mr-2" />
-                    Try camera again
+                    Retry
                   </Button>
                 )}
                 <Button
@@ -403,7 +403,7 @@ export function SubmissionForm() {
                   }}
                 >
                   <ImageIcon className="w-4 h-4 mr-2" />
-                  Choose from device
+                  Choose photo
                 </Button>
               </div>
             </div>
