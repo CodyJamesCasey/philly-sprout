@@ -466,7 +466,6 @@ export function SubmissionForm() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
-            capture="environment"
             className="hidden"
             onChange={handlePhotoCapture}
           />
