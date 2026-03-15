@@ -87,16 +87,13 @@ export function SubmissionForm() {
     }
   }
 
-  async function handleRetryLocation() {
-    const currentPermission = await refreshGeoPermissionState();
-
-    // If permission is still denied, we still try once more in case
-    // platform/browser state has changed but permission API lags behind.
-    if (currentPermission === "denied") {
-      setGeoPermission("denied");
-    }
-
+  function handleRetryLocation() {
+    // Keep geolocation request directly in the user-gesture call stack.
+    // Some mobile browsers suppress permission prompts if we await first.
     acquireLocation();
+
+    // Refresh the permission state in parallel for UI messaging.
+    void refreshGeoPermissionState();
   }
 
   useEffect(() => {
