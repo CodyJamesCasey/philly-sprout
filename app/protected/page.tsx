@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-import { CameraPermissionLink } from "@/components/camera-permission-link";
 
 async function WelcomeBanner() {
   const supabase = await createClient();
@@ -42,7 +41,6 @@ const quickActions = [
     href: "/protected/submission/new",
     cta: "Start",
     primary: true,
-    requireCamera: true,
   },
   {
     icon: FileCheck,
@@ -51,7 +49,6 @@ const quickActions = [
     href: "#",
     cta: "View All",
     primary: false,
-    requireCamera: false,
   },
   {
     icon: MapPin,
@@ -60,7 +57,6 @@ const quickActions = [
     href: "#",
     cta: "Report",
     primary: false,
-    requireCamera: false,
   },
 ];
 
@@ -103,7 +99,7 @@ export default function ProtectedPage() {
           Quick Actions
         </h2>
         <div className="flex flex-col gap-3">
-          {quickActions.map(({ icon: Icon, title, description, href, cta, primary, requireCamera }) => (
+          {quickActions.map(({ icon: Icon, title, description, href, cta, primary }) => (
             <div
               key={title}
               className="flex items-center gap-4 p-4 rounded-2xl bg-card border border-border"
@@ -121,11 +117,7 @@ export default function ProtectedPage() {
                 variant={primary ? "default" : "outline"}
                 className="flex-shrink-0 min-h-[40px] px-4"
               >
-                {requireCamera ? (
-                  <CameraPermissionLink href={href}>{cta}</CameraPermissionLink>
-                ) : (
-                  <Link href={href}>{cta}</Link>
-                )}
+                <Link href={href}>{cta}</Link>
               </Button>
             </div>
           ))}

@@ -63,6 +63,7 @@ export function SubmissionForm() {
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locatingGps, setLocatingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
+  const [requestingCamera, setRequestingCamera] = useState(false);
   const [geoPermission, setGeoPermission] = useState<GeoPermissionState>("unknown");
   const [isIOSSafari, setIsIOSSafari] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -171,6 +172,22 @@ export function SubmissionForm() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  async function handleTapToTakePhoto() {
+    if (requestingCamera) return;
+    setRequestingCamera(true);
+    try {
+      if (navigator.mediaDevices?.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    } catch {
+      // Permission denied or unsupported — still open file input as fallback
+    } finally {
+      setRequestingCamera(false);
+      fileInputRef.current?.click();
+    }
+  }
+
   return (
     <form action={formAction} className="flex flex-col gap-6">
       {/* Hidden GPS fields */}
@@ -209,15 +226,20 @@ export function SubmissionForm() {
           ) : (
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full flex flex-col items-center justify-center gap-3 py-12 border-2 border-dashed border-border rounded-lg hover:border-primary/40 hover:bg-muted/50 transition-colors cursor-pointer"
+              onClick={handleTapToTakePhoto}
+              disabled={requestingCamera}
+              className="w-full flex flex-col items-center justify-center gap-3 py-12 border-2 border-dashed border-border rounded-lg hover:border-primary/40 hover:bg-muted/50 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-wait"
             >
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary">
-                <ImageIcon className="w-6 h-6" />
+                {requestingCamera ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <ImageIcon className="w-6 h-6" />
+                )}
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-foreground">
-                  Tap to take a photo
+                  {requestingCamera ? "Requesting camera…" : "Tap to take a photo"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Use your camera to capture the site
