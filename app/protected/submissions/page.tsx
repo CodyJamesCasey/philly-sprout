@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowLeft, PlusCircle, TreePine, MapPin } from "lucide-react";
+import { Suspense } from "react";
+import { ArrowLeft, PlusCircle, TreePine, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -69,65 +70,6 @@ function formatDate(iso: string) {
   });
 }
 
-async function getSubmissions(view: "mine" | "all") {
-  const supabase = await createClient();
-
-  const { data: authData, error: authError } =
-    await supabase.auth.getClaims();
-  if (authError || !authData?.claims) {
-    redirect("/auth/login");
-  }
-
-  const currentUserId = authData.claims.sub as string;
-
-  let query = supabase
-    .from("tree_candidates")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (view === "mine") {
-    query = query.eq("user_id", currentUserId);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return {
-    submissions: (data ?? []) as TreeCandidate[],
-    currentUserId,
-  };
-}
-
-function ViewToggle({ current }: { current: "mine" | "all" }) {
-  return (
-    <div className="flex rounded-lg border border-border bg-muted p-0.5">
-      <Link
-        href="/protected/submissions"
-        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-          current === "mine"
-            ? "bg-background text-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        Mine
-      </Link>
-      <Link
-        href="/protected/submissions?view=all"
-        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-          current === "all"
-            ? "bg-background text-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        All
-      </Link>
-    </div>
-  );
-}
-
 function SubmissionCard({
   row,
   isOwner,
@@ -174,42 +116,65 @@ function SubmissionCard({
   );
 }
 
-export default async function SubmissionsPage({
+async function SubmissionsContent({
   searchParams,
 }: {
   searchParams: Promise<{ view?: string }>;
 }) {
   const params = await searchParams;
   const view = params.view === "all" ? "all" : "mine";
-  const { submissions, currentUserId } = await getSubmissions(view);
+
+  const supabase = await createClient();
+
+  const { data: authData, error: authError } =
+    await supabase.auth.getClaims();
+  if (authError || !authData?.claims) {
+    redirect("/auth/login");
+  }
+
+  const currentUserId = authData.claims.sub as string;
+
+  let query = supabase
+    .from("tree_candidates")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (view === "mine") {
+    query = query.eq("user_id", currentUserId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const submissions = (data ?? []) as TreeCandidate[];
 
   return (
-    <div className="flex-1 w-full flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button asChild variant="ghost" size="icon">
-            <Link href="/protected">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Submissions
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {submissions.length} site{submissions.length !== 1 ? "s" : ""}
-            </p>
-          </div>
-        </div>
-        <Button asChild size="sm">
-          <Link href="/protected/submission/new">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            New
-          </Link>
-        </Button>
+    <>
+      <div className="flex rounded-lg border border-border bg-muted p-0.5 self-start">
+        <Link
+          href="/protected/submissions"
+          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            view === "mine"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Mine
+        </Link>
+        <Link
+          href="/protected/submissions?view=all"
+          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            view === "all"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          All
+        </Link>
       </div>
-
-      <ViewToggle current={view} />
 
       {submissions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border rounded-2xl">
@@ -239,6 +204,47 @@ export default async function SubmissionsPage({
           ))}
         </div>
       )}
+    </>
+  );
+}
+
+export default function SubmissionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  return (
+    <div className="flex-1 w-full flex flex-col gap-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <Button asChild variant="ghost" size="icon">
+            <Link href="/protected">
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">
+              Submissions
+            </h1>
+          </div>
+        </div>
+        <Button asChild size="sm">
+          <Link href="/protected/submission/new">
+            <PlusCircle className="w-4 h-4 mr-2" />
+            New
+          </Link>
+        </Button>
+      </div>
+
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          </div>
+        }
+      >
+        <SubmissionsContent searchParams={searchParams} />
+      </Suspense>
     </div>
   );
 }
