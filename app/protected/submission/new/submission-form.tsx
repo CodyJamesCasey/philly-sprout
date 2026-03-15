@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Camera, MapPin, Loader2, ImageIcon } from "lucide-react";
+import { Camera, MapPin, Loader2, ImageIcon, Sparkles, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,11 +25,26 @@ import { CameraCaptureView } from "@/components/camera-capture-view";
 import { CameraPermissionPrompt } from "@/components/camera-permission-prompt";
 import { PhotoGallery, type PhotoEntry } from "@/components/photo-gallery";
 import { createSubmission, type SubmissionState } from "./actions";
+import type { AnalysisResponse, CriterionResult } from "@/app/api/analyze/route";
 
 type GeoPermissionState = "unknown" | "granted" | "prompt" | "denied" | "unsupported";
 type MobilePlatform = "ios" | "android" | "other";
 
-const CRITERIA_FIELDS = [
+// All 7 criteria field names that map to the form + the API response
+type CriterionKey =
+  | "pit_size"
+  | "pit_edge_clearance"
+  | "no_obstructions"
+  | "driveway_clearance"
+  | "corner_clearance"
+  | "pole_hydrant_clearance"
+  | "tree_clearance";
+
+const CRITERIA_FIELDS: {
+  name: CriterionKey;
+  label: string;
+  description: string;
+}[] = [
   { name: "pit_size", label: "Pit Size", description: "Tree pit is at least 3' × 3'" },
   { name: "pit_edge_clearance", label: "Pit Edge Clearance", description: "Pit edge is ≥ 2' from curb face" },
   { name: "no_obstructions", label: "No Obstructions", description: "No utilities, grates, or vaults in the pit" },
@@ -37,14 +52,60 @@ const CRITERIA_FIELDS = [
   { name: "corner_clearance", label: "Corner Clearance", description: "Pit is ≥ 25' from intersection" },
   { name: "pole_hydrant_clearance", label: "Pole / Hydrant Clearance", description: "≥ 10' from fire hydrant, ≥ 5' from utility pole" },
   { name: "tree_clearance", label: "Tree Clearance", description: "≥ 20' from nearest existing tree" },
-] as const;
+];
 
-function CriteriaSelect({ name, label, description }: { name: string; label: string; description: string }) {
+// ─── Controlled CriteriaSelect ────────────────────────────────────────────────
+
+interface CriteriaSelectProps {
+  name: string;
+  label: string;
+  description: string;
+  value: string;
+  onChange: (value: string) => void;
+  aiResult?: CriterionResult;
+  isAiFilled: boolean;
+}
+
+function CriteriaSelect({
+  name,
+  label,
+  description,
+  value,
+  onChange,
+  aiResult,
+  isAiFilled,
+}: CriteriaSelectProps) {
+  // Show angle re-prompt when AI returned "unclear" AND the user hasn't
+  // manually changed this field to something else.
+  const showAnglePrompt =
+    aiResult?.verdict === "unclear" &&
+    aiResult?.suggested_angle &&
+    value === "unclear";
+
   return (
     <div className="space-y-2">
-      <Label htmlFor={name}>{label}</Label>
+      {/* Label row with AI badge */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Label htmlFor={name}>{label}</Label>
+        {isAiFilled && (
+          <span className="inline-flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium">
+            <Sparkles className="w-3 h-3" />
+            AI filled
+          </span>
+        )}
+      </div>
+
       <p className="text-xs text-muted-foreground">{description}</p>
-      <Select name={name}>
+
+      {/* AI reason (shown after analysis) */}
+      {aiResult?.reason && (
+        <p className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-2">
+          {aiResult.reason}
+        </p>
+      )}
+
+      {/* Controlled select — keeps name attr so Server Action reads it */}
+      <Select name={name} value={value} onValueChange={onChange}>
         <SelectTrigger id={name} className="w-full">
           <SelectValue placeholder="Select…" />
         </SelectTrigger>
@@ -54,9 +115,26 @@ function CriteriaSelect({ name, label, description }: { name: string; label: str
           <SelectItem value="unclear">Unclear</SelectItem>
         </SelectContent>
       </Select>
+
+      {/* Angle re-prompt banner */}
+      {showAnglePrompt && (
+        <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 px-3 py-2.5 mt-1">
+          <RotateCcw className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+              Better angle needed
+            </p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+              {aiResult.suggested_angle}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+// ─── Main form ────────────────────────────────────────────────────────────────
 
 export function SubmissionForm() {
   const [state, formAction, isPending] = useActionState<SubmissionState, FormData>(
@@ -64,6 +142,7 @@ export function SubmissionForm() {
     {},
   );
 
+  // ── Photo state ──────────────────────────────────────────────────────────
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [expandedPhotoIndex, setExpandedPhotoIndex] = useState<number | null>(null);
@@ -73,6 +152,9 @@ export function SubmissionForm() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraUnsupported, setCameraUnsupported] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── GPS state ────────────────────────────────────────────────────────────
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locatingGps, setLocatingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
@@ -80,31 +162,56 @@ export function SubmissionForm() {
   const [platform, setPlatform] = useState<MobilePlatform>("other");
   const [isSafari, setIsSafari] = useState(false);
   const [isChrome, setIsChrome] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── AI analysis state ────────────────────────────────────────────────────
+  const [analysisStatus, setAnalysisStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResponse | null>(null);
+
+  // criteriaValues: controlled values for all 7 criteria selects
+  const [criteriaValues, setCriteriaValues] = useState<Record<CriterionKey, string>>({
+    pit_size: "",
+    pit_edge_clearance: "",
+    no_obstructions: "",
+    driveway_clearance: "",
+    corner_clearance: "",
+    pole_hydrant_clearance: "",
+    tree_clearance: "",
+  });
+
+  // overallSuitability: controlled value for the overall suitability select
+  const [overallSuitability, setOverallSuitability] = useState("");
+
+  // manuallySet: tracks which fields the user has touched themselves
+  // so we never overwrite a user's explicit choice with AI output
+  const [manuallySet, setManuallySet] = useState<Set<string>>(new Set());
+
+  function handleCriterionChange(key: CriterionKey, value: string) {
+    setCriteriaValues((prev) => ({ ...prev, [key]: value }));
+    setManuallySet((prev) => new Set(prev).add(key));
+  }
+
+  function handleOverallSuitabilityChange(value: string) {
+    setOverallSuitability(value);
+    setManuallySet((prev) => new Set(prev).add("overall_suitability"));
+  }
+
+  // ── GPS helpers ──────────────────────────────────────────────────────────
 
   async function refreshGeoPermissionState(): Promise<GeoPermissionState> {
-    if (!navigator.permissions?.query) {
-      return "unknown";
-    }
-
+    if (!navigator.permissions?.query) return "unknown";
     try {
-      const permissionStatus = await navigator.permissions.query({
-        name: "geolocation",
-      });
-      const state = permissionStatus.state as GeoPermissionState;
-      setGeoPermission(state);
-      return state;
+      const permissionStatus = await navigator.permissions.query({ name: "geolocation" });
+      const s = permissionStatus.state as GeoPermissionState;
+      setGeoPermission(s);
+      return s;
     } catch {
       return "unknown";
     }
   }
 
   function handleRetryLocation() {
-    // Keep geolocation request directly in the user-gesture call stack.
-    // Some mobile browsers suppress permission prompts if we await first.
     acquireLocation();
-
-    // Refresh the permission state in parallel for UI messaging.
     void refreshGeoPermissionState();
   }
 
@@ -119,7 +226,6 @@ export function SubmissionForm() {
     const isAndroid = /Android/.test(ua);
     const safari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
     const chrome = /Chrome|CriOS/.test(ua) && !/Edg|OPR|SamsungBrowser|DuckDuckGo/.test(ua);
-
     setPlatform(isiOS ? "ios" : isAndroid ? "android" : "other");
     setIsSafari(safari);
     setIsChrome(chrome);
@@ -129,12 +235,10 @@ export function SubmissionForm() {
       setGpsError("Geolocation is not supported by this browser.");
       return;
     }
-
     if (!window.isSecureContext) {
       setGpsError("Location access requires HTTPS. Open this site over a secure connection.");
       return;
     }
-
     if (!navigator.permissions?.query) {
       setGeoPermission("prompt");
       return;
@@ -145,30 +249,21 @@ export function SubmissionForm() {
       .query({ name: "geolocation" })
       .then((permissionStatus) => {
         if (!isMounted) return;
-        const state = permissionStatus.state as GeoPermissionState;
-        setGeoPermission(state);
-
-        if (state === "granted") {
-          acquireLocation();
-        }
-
+        const s = permissionStatus.state as GeoPermissionState;
+        setGeoPermission(s);
+        if (s === "granted") acquireLocation();
         permissionStatus.onchange = () => {
-          const nextState = permissionStatus.state as GeoPermissionState;
-          setGeoPermission(nextState);
-          if (nextState === "granted") {
-            acquireLocation();
-          }
+          const next = permissionStatus.state as GeoPermissionState;
+          setGeoPermission(next);
+          if (next === "granted") acquireLocation();
         };
       })
       .catch(() => {
         if (!isMounted) return;
-        // Some mobile browsers do not fully support permissions.query.
         setGeoPermission("prompt");
       });
 
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {
@@ -176,10 +271,8 @@ export function SubmissionForm() {
       if (document.visibilityState === "hidden") return;
       void refreshGeoPermissionState();
     }
-
     window.addEventListener("focus", syncOnReturn);
     document.addEventListener("visibilitychange", syncOnReturn);
-
     return () => {
       window.removeEventListener("focus", syncOnReturn);
       document.removeEventListener("visibilitychange", syncOnReturn);
@@ -203,17 +296,11 @@ export function SubmissionForm() {
         if (err.code === err.PERMISSION_DENIED) {
           setGeoPermission("denied");
           if (platform === "ios" && isSafari) {
-            setGpsError(
-              "Location access is off for Safari on this iPhone/iPad. Turn it on in iOS Settings, then retry.",
-            );
+            setGpsError("Location access is off for Safari on this iPhone/iPad. Turn it on in iOS Settings, then retry.");
           } else if (platform === "android") {
-            setGpsError(
-              "Location access is off on this Android device. Enable it in browser/app permissions, then retry.",
-            );
+            setGpsError("Location access is off on this Android device. Enable it in browser/app permissions, then retry.");
           } else {
-            setGpsError(
-              "Location permission is blocked. Tap Allow in the browser prompt, or enable Location for this site in your browser settings.",
-            );
+            setGpsError("Location permission is blocked. Tap Allow in the browser prompt, or enable Location for this site in your browser settings.");
           }
         } else if (err.code === err.POSITION_UNAVAILABLE) {
           setGpsError("Unable to determine your location right now. Move to an open area and retry.");
@@ -228,6 +315,8 @@ export function SubmissionForm() {
     );
   }
 
+  // ── Photo upload helpers ─────────────────────────────────────────────────
+
   async function uploadPhotoFile(file: File): Promise<void> {
     setPhotoError(null);
     const preview = URL.createObjectURL(file);
@@ -235,10 +324,7 @@ export function SubmissionForm() {
     setUploadingPhoto(true);
     try {
       const supabase = createClient();
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         setPhotoError("You must be signed in to upload a photo.");
         setPhotos((prev) => prev.filter((p) => p.preview !== preview));
@@ -368,9 +454,69 @@ export function SubmissionForm() {
     };
   }, [cameraStream]);
 
+  // ── Gemini analysis ──────────────────────────────────────────────────────
+
+  // Only photos that have been successfully uploaded to Supabase (have a url)
+  const uploadedPhotoUrls = photos.filter((p) => p.url).map((p) => p.url as string);
+  const canAnalyze = uploadedPhotoUrls.length > 0 && !uploadingPhoto && analysisStatus !== "loading";
+
+  async function runAnalysis() {
+    if (!canAnalyze) return;
+    setAnalysisStatus("loading");
+    setAnalysisError(null);
+
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrls: uploadedPhotoUrls }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error ?? "Analysis failed");
+      }
+
+      const result: AnalysisResponse = await res.json();
+      setAnalysisResult(result);
+      setAnalysisStatus("done");
+
+      // Auto-fill criteria fields — only if the user hasn't manually set them
+      const criteriaKeys: CriterionKey[] = [
+        "pit_size",
+        "pit_edge_clearance",
+        "no_obstructions",
+        "driveway_clearance",
+        "corner_clearance",
+        "pole_hydrant_clearance",
+        "tree_clearance",
+      ];
+
+      setCriteriaValues((prev) => {
+        const next = { ...prev };
+        for (const key of criteriaKeys) {
+          if (!manuallySet.has(key)) {
+            next[key] = result.criteria[key].verdict;
+          }
+        }
+        return next;
+      });
+
+      // Auto-fill overall suitability if not manually set
+      if (!manuallySet.has("overall_suitability")) {
+        setOverallSuitability(result.overall_suitability);
+      }
+    } catch (err) {
+      setAnalysisStatus("error");
+      setAnalysisError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────
+
   return (
     <form action={formAction} className="flex flex-col gap-6">
-      {/* Hidden fields */}
+      {/* Hidden fields for Server Action */}
       <input type="hidden" name="latitude" value={location?.lat ?? ""} />
       <input type="hidden" name="longitude" value={location?.lng ?? ""} />
       {photos
@@ -384,15 +530,16 @@ export function SubmissionForm() {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Camera className="w-4 h-4" />
-            Site Photo
+            Site Photos
           </CardTitle>
           <CardDescription>
-            Take a photo of the potential tree pit. AI analysis will be available soon.
+            Take or upload photos of the potential tree pit, then use AI to
+            pre-fill the site criteria below.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {photoError && (
-            <div className="space-y-3 mb-3">
+            <div className="space-y-3">
               <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
                 {photoError}
               </div>
@@ -402,10 +549,7 @@ export function SubmissionForm() {
                     type="button"
                     variant="outline"
                     className="flex-1"
-                    onClick={() => {
-                      setPhotoError(null);
-                      handleTapToTakePhoto();
-                    }}
+                    onClick={() => { setPhotoError(null); handleTapToTakePhoto(); }}
                   >
                     <Camera className="w-4 h-4 mr-2" />
                     Retry
@@ -415,10 +559,7 @@ export function SubmissionForm() {
                   type="button"
                   variant="outline"
                   className={cameraUnsupported ? "w-full" : "flex-1"}
-                  onClick={() => {
-                    setPhotoError(null);
-                    fileInputRef.current?.click();
-                  }}
+                  onClick={() => { setPhotoError(null); fileInputRef.current?.click(); }}
                 >
                   <ImageIcon className="w-4 h-4 mr-2" />
                   Choose photo
@@ -426,6 +567,7 @@ export function SubmissionForm() {
               </div>
             </div>
           )}
+
           {cameraStream ? (
             <CameraCaptureView
               ref={videoRef}
@@ -482,12 +624,8 @@ export function SubmissionForm() {
                   <ImageIcon className="w-6 h-6" />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium text-foreground">
-                    Tap to take a photo
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Use your camera to capture the site
-                  </p>
+                  <p className="text-sm font-medium text-foreground">Tap to take a photo</p>
+                  <p className="text-xs text-muted-foreground mt-1">Use your camera to capture the site</p>
                 </div>
               </button>
               <Button
@@ -501,6 +639,7 @@ export function SubmissionForm() {
               </Button>
             </div>
           )}
+
           <input
             ref={fileInputRef}
             type="file"
@@ -509,6 +648,58 @@ export function SubmissionForm() {
             className="hidden"
             onChange={handlePhotoCapture}
           />
+
+          {/* ── Analyze button — shown once at least one photo is uploaded ── */}
+          {uploadedPhotoUrls.length > 0 && (
+            <div className="pt-1 space-y-2">
+              <Button
+                type="button"
+                className="w-full gap-2"
+                onClick={runAnalysis}
+                disabled={!canAnalyze}
+              >
+                {analysisStatus === "loading" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Analyzing {uploadedPhotoUrls.length} photo{uploadedPhotoUrls.length !== 1 ? "s" : ""}…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    {analysisStatus === "done"
+                      ? `Re-analyze (${uploadedPhotoUrls.length} photo${uploadedPhotoUrls.length !== 1 ? "s" : ""})`
+                      : `Analyze and fill out form (${uploadedPhotoUrls.length} photo${uploadedPhotoUrls.length !== 1 ? "s" : ""})`}
+                  </>
+                )}
+              </Button>
+
+              {/* Analysis error */}
+              {analysisStatus === "error" && analysisError && (
+                <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                  Analysis failed: {analysisError}
+                </div>
+              )}
+
+              {/* Overall suitability banner after analysis */}
+              {analysisStatus === "done" && analysisResult && (
+                <div
+                  className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 text-sm ${
+                    analysisResult.overall_suitability === "Likely Suitable"
+                      ? "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300"
+                      : analysisResult.overall_suitability === "Possibly Suitable"
+                      ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300"
+                      : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300"
+                  }`}
+                >
+                  <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">{analysisResult.overall_suitability}</p>
+                    <p className="text-xs mt-0.5 opacity-80">{analysisResult.overall_notes}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -609,15 +800,30 @@ export function SubmissionForm() {
         <CardHeader>
           <CardTitle className="text-base">Site Criteria</CardTitle>
           <CardDescription>
-            Evaluate the planting site against each criterion. These will eventually be
-            pre-filled by AI from your photo.
+            {analysisStatus === "done"
+              ? 'Fields marked “AI filled” were pre-filled from your photos. You can override any result.'
+              : 'Upload photos above and click “Analyze and fill out form” to auto-fill these fields, or fill them in manually.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {CRITERIA_FIELDS.map((field) => (
-              <CriteriaSelect key={field.name} {...field} />
-            ))}
+            {CRITERIA_FIELDS.map((field) => {
+              const aiResult = analysisResult?.criteria[field.name];
+              // A field is "AI filled" if analysis ran AND the user hasn't manually changed it
+              const isAiFilled = analysisStatus === "done" && !manuallySet.has(field.name);
+              return (
+                <CriteriaSelect
+                  key={field.name}
+                  name={field.name}
+                  label={field.label}
+                  description={field.description}
+                  value={criteriaValues[field.name]}
+                  onChange={(v) => handleCriterionChange(field.name, v)}
+                  aiResult={aiResult}
+                  isAiFilled={isAiFilled && !!criteriaValues[field.name]}
+                />
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -625,12 +831,24 @@ export function SubmissionForm() {
       {/* ── Overall Suitability ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Overall Suitability</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            Overall Suitability
+            {analysisStatus === "done" && !manuallySet.has("overall_suitability") && overallSuitability && (
+              <span className="inline-flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium">
+                <Sparkles className="w-3 h-3" />
+                AI filled
+              </span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="overall_suitability">Rating</Label>
-            <Select name="overall_suitability">
+            <Select
+              name="overall_suitability"
+              value={overallSuitability}
+              onValueChange={handleOverallSuitabilityChange}
+            >
               <SelectTrigger id="overall_suitability" className="w-full">
                 <SelectValue placeholder="Select…" />
               </SelectTrigger>
