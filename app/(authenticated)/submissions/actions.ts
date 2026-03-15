@@ -10,8 +10,7 @@ export async function deleteSubmission(id: string) {
 
   const supabase = await createClient();
 
-  const { data: authData, error: authError } =
-    await supabase.auth.getClaims();
+  const { data: authData, error: authError } = await supabase.auth.getClaims();
   if (authError || !authData?.claims) {
     redirect("/auth/login");
   }
@@ -31,5 +30,5 @@ export async function deleteSubmission(id: string) {
     throw new Error(error.message);
   }
 
-  revalidatePath("/protected/submissions");
+  revalidatePath("/submissions");
 }

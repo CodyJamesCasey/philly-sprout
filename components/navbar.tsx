@@ -18,7 +18,7 @@ async function NavAuthButton() {
         size="sm"
         className="bg-green-500 hover:bg-green-400 text-white font-semibold px-3"
       >
-        <Link href="/protected">Dashboard</Link>
+        <Link href="/dashboard">Dashboard</Link>
       </Button>
       <span className="text-white/70 text-xs hidden sm:inline truncate max-w-[140px]">
         {user.email as string}
