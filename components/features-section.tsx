@@ -17,7 +17,7 @@ const features = [
     icon: Leaf,
     title: "Aligned with PHS Standards",
     description:
-      "Every form field maps directly to the official PHS property owner application. No guesswork, no omissions.",
+      "Every form field maps to the official PHS criteria for street tree planting.",
   },
   {
     icon: Users,
