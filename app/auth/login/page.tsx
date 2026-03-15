@@ -17,7 +17,7 @@ export default function Page() {
             Philadelphians.&rdquo;
           </blockquote>
           <p className="text-primary-foreground/70 text-sm">
-            Supporting PHS tree programs since 2024.
+            Supporting PHS tree programs.
           </p>
         </div>
         <p className="text-primary-foreground/50 text-xs">
