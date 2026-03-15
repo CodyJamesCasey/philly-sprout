@@ -27,7 +27,6 @@ const CRITERIA_FIELDS = [
   { name: "pit_edge_clearance", label: "Pit Edge Clearance", description: "Pit edge is ≥ 2' from curb face" },
   { name: "no_obstructions", label: "No Obstructions", description: "No utilities, grates, or vaults in the pit" },
   { name: "driveway_clearance", label: "Driveway Clearance", description: "Pit is ≥ 3' from any driveway" },
-  { name: "not_for_sale", label: "Not For Sale", description: "Property is not listed for sale or demolition" },
   { name: "corner_clearance", label: "Corner Clearance", description: "Pit is ≥ 25' from intersection" },
   { name: "pole_hydrant_clearance", label: "Pole / Hydrant Clearance", description: "≥ 10' from fire hydrant, ≥ 5' from utility pole" },
   { name: "tree_clearance", label: "Tree Clearance", description: "≥ 20' from nearest existing tree" },
