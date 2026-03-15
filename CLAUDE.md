@@ -27,7 +27,7 @@ npm run lint      # Run ESLint
 ```
 app/                    # Next.js App Router pages
   auth/                 # Login, sign-up, password flows
-  protected/            # Auth-required routes (dashboard, submissions)
+  (authenticated)/      # Session-protected routes (dashboard, submissions, map)
 components/             # React components
   ui/                   # shadcn/ui primitives
   tutorial/             # Tutorial/educational components

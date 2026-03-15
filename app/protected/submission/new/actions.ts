@@ -65,5 +65,5 @@ export async function createSubmission(
     return { error: error.message };
   }
 
-  redirect("/protected");
+  redirect("/dashboard");
 }
