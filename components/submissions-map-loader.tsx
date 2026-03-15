@@ -41,10 +41,12 @@ export function SubmissionsMapLoader({
   submissions,
   height,
   showFilters = false,
+  defaultZoom,
 }: {
   submissions: Submission[];
   height?: string;
   showFilters?: boolean;
+  defaultZoom?: number;
 }) {
   const [activeFilters, setActiveFilters] = useState<Set<string>>(
     () => new Set(FILTERS.map((f) => f.key))
@@ -132,6 +134,7 @@ export function SubmissionsMapLoader({
         submissions={filtered}
         height={height}
         showCanopy={showCanopy}
+        defaultZoom={defaultZoom}
       />
     </div>
   );

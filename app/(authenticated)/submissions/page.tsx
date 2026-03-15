@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
+import { isAdmin } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
 import { DeleteButton } from "./delete-button";
 
@@ -72,10 +73,10 @@ function formatDate(iso: string) {
 
 function SubmissionCard({
   row,
-  isOwner,
+  canDelete,
 }: {
   row: TreeCandidate;
-  isOwner: boolean;
+  canDelete: boolean;
 }) {
   const { pass, total } = criteriaCount(row);
   return (
@@ -98,7 +99,7 @@ function SubmissionCard({
             <Badge variant={suitabilityVariant(row.overall_suitability)}>
               {row.overall_suitability ?? "Unrated"}
             </Badge>
-            {isOwner && <DeleteButton id={row.id} />}
+            {canDelete && <DeleteButton id={row.id} />}
           </div>
         </div>
       </CardHeader>
@@ -107,9 +108,7 @@ function SubmissionCard({
           <span>
             Criteria: {pass}/{total} pass
           </span>
-          {row.notes && (
-            <span className="truncate max-w-[200px]">{row.notes}</span>
-          )}
+          {row.notes && <span className="truncate max-w-[200px]">{row.notes}</span>}
         </div>
       </CardContent>
     </Card>
@@ -126,13 +125,13 @@ async function SubmissionsContent({
 
   const supabase = await createClient();
 
-  const { data: authData, error: authError } =
-    await supabase.auth.getClaims();
+  const { data: authData, error: authError } = await supabase.auth.getClaims();
   if (authError || !authData?.claims) {
     redirect("/auth/login");
   }
 
   const currentUserId = authData.claims.sub as string;
+  const admin = await isAdmin();
 
   let query = supabase
     .from("tree_candidates")
@@ -155,7 +154,7 @@ async function SubmissionsContent({
     <>
       <div className="flex rounded-lg border border-border bg-muted p-0.5 self-start">
         <Link
-          href="/protected/submissions"
+          href="/submissions"
           className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
             view === "mine"
               ? "bg-background text-foreground shadow-sm"
@@ -165,7 +164,7 @@ async function SubmissionsContent({
           Mine
         </Link>
         <Link
-          href="/protected/submissions?view=all"
+          href="/submissions?view=all"
           className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
             view === "all"
               ? "bg-background text-foreground shadow-sm"
@@ -188,19 +187,18 @@ async function SubmissionsContent({
               : "No one has submitted a site yet. Be the first!"}
           </p>
           <Button asChild className="mt-5">
-            <Link href="/protected/submission/new">
-              Start Your First Submission
-            </Link>
+            <Link href="/submission/new">Start Your First Submission</Link>
           </Button>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           {submissions.map((row) => (
-            <SubmissionCard
-              key={row.id}
-              row={row}
-              isOwner={row.user_id === currentUserId}
-            />
+            <Link key={row.id} href={`/protected/submission/${row.id}`}>
+              <SubmissionCard
+                row={row}
+                canDelete={admin || row.user_id === currentUserId}
+              />
+            </Link>
           ))}
         </div>
       )}
@@ -218,18 +216,16 @@ export default function SubmissionsPage({
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button asChild variant="ghost" size="icon">
-            <Link href="/protected">
+            <Link href="/dashboard">
               <ArrowLeft className="w-5 h-5" />
             </Link>
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Submissions
-            </h1>
+            <h1 className="text-2xl font-bold text-foreground">Submissions</h1>
           </div>
         </div>
         <Button asChild size="sm">
-          <Link href="/protected/submission/new">
+          <Link href="/submission/new">
             <PlusCircle className="w-4 h-4 mr-2" />
             New
           </Link>

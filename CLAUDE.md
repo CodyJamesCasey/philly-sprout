@@ -27,12 +27,12 @@ npm run lint      # Run ESLint
 ```
 app/                    # Next.js App Router pages
   auth/                 # Login, sign-up, password flows
-  protected/            # Auth-required routes (dashboard, submissions)
+  (authenticated)/      # Session-protected routes (dashboard, submissions, map)
 components/             # React components
   ui/                   # shadcn/ui primitives
   tutorial/             # Tutorial/educational components
 lib/                    # Utilities
-  supabase/             # Supabase client (server.ts, client.ts, proxy.ts)
+  supabase/             # Supabase client (server.ts, client.ts, proxy.ts, admin.ts)
   utils.ts              # cn() helper for Tailwind class merging
 proxy.ts                # Middleware entry point (session refresh)
 ```
@@ -59,6 +59,8 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 Primary table: `tree_candidates` — stores submissions with GPS coords, photo URLs, site criteria (pass/fail/unclear enums), owner info, attestations, AI metadata, and submission status.
 
 Secondary table: `tree_health_reports` — post-planting health tracking.
+
+Roles table: `profiles` — one row per user (auto-created via trigger on sign-up). Contains `is_admin` boolean (default `false`). Admins (PHS staff) can delete any submission; regular users can only delete their own. Admin check helper: `isAdmin()` from `@/lib/supabase/admin`.
 
 ## Important Notes
 

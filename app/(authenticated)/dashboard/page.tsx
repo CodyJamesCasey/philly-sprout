@@ -1,15 +1,21 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Suspense } from "react";
-import { TreePine, MapPin, FileCheck, PlusCircle, Map, Globe } from "lucide-react";
+import { TreePine, FileCheck, PlusCircle, Map, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 import { SubmissionsMapLoader } from "@/components/submissions-map-loader";
 import type { Submission } from "@/components/submissions-map";
+
+type DashboardSubmission = {
+  id: string;
+  created_at: string;
+  street_address: string | null;
+  latitude: number;
+  longitude: number;
+  overall_suitability: string | null;
+};
 
 async function WelcomeBanner() {
   const supabase = await createClient();
@@ -37,7 +43,7 @@ const quickActions = [
     icon: PlusCircle,
     title: "New Submission",
     description: "Photograph and submit a new street tree planting site.",
-    href: "/protected/submission/new",
+    href: "/submission/new",
     cta: "Start",
     primary: true,
   },
@@ -45,7 +51,7 @@ const quickActions = [
     icon: FileCheck,
     title: "My Submissions",
     description: "View the status of all your previously submitted sites.",
-    href: "/protected/submissions",
+    href: "/submissions",
     cta: "View All",
     primary: false,
   },
@@ -53,7 +59,7 @@ const quickActions = [
     icon: Globe,
     title: "All Submissions",
     description: "Browse every submitted site across the community.",
-    href: "/protected/submissions?view=all",
+    href: "/submissions?view=all",
     cta: "Browse",
     primary: false,
   },
@@ -61,16 +67,8 @@ const quickActions = [
     icon: Map,
     title: "Map View",
     description: "See all submitted sites plotted on a map.",
-    href: "/protected/map",
+    href: "/map",
     cta: "Open Map",
-    primary: false,
-  },
-  {
-    icon: MapPin,
-    title: "Report a Concern",
-    description: "Report a sick, damaged, downed, or missing tree.",
-    href: "#",
-    cta: "Report",
     primary: false,
   },
 ];
@@ -90,11 +88,10 @@ async function DashboardStats() {
   const stats = [
     { label: "Submissions", value: totalCount ?? 0, icon: FileCheck },
     { label: "Suitable", value: suitableCount ?? 0, icon: TreePine },
-    { label: "Reports", value: 0, icon: MapPin },
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 gap-3">
       {stats.map(({ label, value, icon: Icon }) => (
         <Card key={label} className="border-border">
           <CardContent className="flex flex-col items-center justify-center gap-1 pt-4 pb-3 px-2 text-center">
@@ -115,7 +112,7 @@ async function RecentSubmissionsMap() {
   const { data: submissions } = await supabase
     .from("tree_candidates")
     .select(
-      "id, latitude, longitude, street_address, overall_suitability, created_at, notes"
+      "id, latitude, longitude, street_address, overall_suitability, created_at, notes",
     )
     .order("created_at", { ascending: false })
     .limit(10);
@@ -131,7 +128,7 @@ async function RecentSubmissionsMap() {
           Recent Submissions
         </h2>
         <Button asChild variant="outline" size="sm">
-          <Link href="/protected/map">View Full Map</Link>
+          <Link href="/map">View Full Map</Link>
         </Button>
       </div>
       <div className="rounded-xl overflow-hidden border border-border">
@@ -155,10 +152,80 @@ async function RecentSubmissionsMap() {
   );
 }
 
-export default function ProtectedPage() {
+async function MyRecentSubmissions() {
+  const supabase = await createClient();
+  const { data: authData, error: authError } = await supabase.auth.getClaims();
+
+  if (authError || !authData?.claims) {
+    redirect("/auth/login");
+  }
+
+  const userId = authData.claims.sub as string;
+
+  const { data } = await supabase
+    .from("tree_candidates")
+    .select("id, created_at, street_address, latitude, longitude, overall_suitability")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(3);
+
+  const submissions = (data as DashboardSubmission[] | null) ?? [];
+
+  if (submissions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 sm:py-16 text-center border border-dashed border-border rounded-2xl">
+        <TreePine className="w-10 h-10 text-primary/40 mb-3" />
+        <h3 className="font-semibold text-foreground mb-1">No submissions yet</h3>
+        <p className="text-sm text-muted-foreground max-w-xs px-4">
+          Find a potential tree pit on your block and start your first submission to
+          get the ball rolling.
+        </p>
+        <Button asChild className="mt-5 min-h-[44px] px-6">
+          <Link href="/submission/new">Start Your First Submission</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base sm:text-lg font-semibold text-foreground">
+          My Recent Submissions
+        </h2>
+        <Button asChild variant="outline" size="sm">
+          <Link href="/submissions">View All</Link>
+        </Button>
+      </div>
+      {submissions.map((submission) => (
+        <div
+          key={submission.id}
+          className="rounded-xl border border-border bg-card px-4 py-3"
+        >
+          <p className="text-sm font-medium text-foreground">
+            {submission.street_address ??
+              `${submission.latitude.toFixed(4)}, ${submission.longitude.toFixed(4)}`}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {new Date(submission.created_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+            {" • "}
+            {submission.overall_suitability ?? "Unrated"}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function DashboardPage() {
   return (
     <div className="flex-1 w-full flex flex-col gap-6 sm:gap-10">
-      {/* Welcome banner */}
       <Suspense
         fallback={
           <div>
@@ -169,11 +236,10 @@ export default function ProtectedPage() {
         <WelcomeBanner />
       </Suspense>
 
-      {/* Stats row */}
       <Suspense
         fallback={
-          <div className="grid grid-cols-3 gap-3">
-            {["Submissions", "Suitable", "Reports"].map((label) => (
+          <div className="grid grid-cols-2 gap-3">
+            {["Submissions", "Suitable"].map((label) => (
               <Card key={label} className="border-border">
                 <CardContent className="flex flex-col items-center justify-center gap-1 pt-4 pb-3 px-2 text-center">
                   <div className="w-8 h-8 rounded-lg bg-muted animate-pulse" />
@@ -188,7 +254,6 @@ export default function ProtectedPage() {
         <DashboardStats />
       </Suspense>
 
-      {/* Map preview */}
       <Suspense
         fallback={
           <div className="h-[300px] flex items-center justify-center bg-muted/30 rounded-xl">
@@ -217,7 +282,9 @@ export default function ProtectedPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-foreground text-sm">{title}</p>
-                <p className="text-xs text-muted-foreground leading-snug mt-0.5 line-clamp-2">{description}</p>
+                <p className="text-xs text-muted-foreground leading-snug mt-0.5 line-clamp-2">
+                  {description}
+                </p>
               </div>
               <Button
                 asChild
@@ -232,18 +299,15 @@ export default function ProtectedPage() {
         </div>
       </div>
 
-      {/* Empty state */}
-      <div className="flex flex-col items-center justify-center py-10 sm:py-16 text-center border border-dashed border-border rounded-2xl">
-        <TreePine className="w-10 h-10 text-primary/40 mb-3" />
-        <h3 className="font-semibold text-foreground mb-1">No submissions yet</h3>
-        <p className="text-sm text-muted-foreground max-w-xs px-4">
-          Find a potential tree pit on your block and start your first
-          submission to get the ball rolling.
-        </p>
-        <Button asChild className="mt-5 min-h-[44px] px-6">
-          <Link href="/protected/submission/new">Start Your First Submission</Link>
-        </Button>
-      </div>
+      <Suspense
+        fallback={
+          <div className="rounded-xl border border-border bg-card p-4">
+            <p className="text-sm text-muted-foreground">Loading your submissions...</p>
+          </div>
+        }
+      >
+        <MyRecentSubmissions />
+      </Suspense>
     </div>
   );
 }

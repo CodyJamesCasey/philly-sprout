@@ -68,6 +68,7 @@ type SubmissionsMapProps = {
   submissions: Submission[];
   height?: string;
   showCanopy?: boolean;
+  defaultZoom?: number;
 };
 
 const suitabilityConfig: Record<string, { color: string; label: string }> = {
@@ -133,6 +134,7 @@ function buildPopupHtml(submission: Submission, isDark: boolean) {
     </p>
     <p style="margin:0;font-size:0.8em;color:${mutedColor}">${formatDate(submission.created_at)}</p>
     ${notesHtml}
+    <a href="/protected/submission/${submission.id}" style="display:inline-block;margin-top:8px;font-size:0.8em;color:${isDark ? "#93c5fd" : "#2563eb"};text-decoration:none;font-weight:500">View details →</a>
   </div>`;
 }
 
@@ -148,6 +150,7 @@ export function SubmissionsMap({
   submissions,
   height = "400px",
   showCanopy = false,
+  defaultZoom,
 }: SubmissionsMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -161,10 +164,15 @@ export function SubmissionsMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const center: [number, number] =
+      submissions.length === 1
+        ? [submissions[0].latitude, submissions[0].longitude]
+        : PHILADELPHIA_CENTER;
+
     const map = L.map(containerRef.current, {
       zoomControl: false,
       maxZoom: 19,
-    }).setView(PHILADELPHIA_CENTER, DEFAULT_ZOOM);
+    }).setView(center, defaultZoom ?? DEFAULT_ZOOM);
     mapRef.current = map;
 
     // Add zoom control to bottom-right
@@ -196,7 +204,7 @@ export function SubmissionsMap({
       tileLayerRef.current = null;
       canopyLayerRef.current = null;
     };
-  }, [submissions]);
+  }, [submissions, defaultZoom, isDark]);
 
   // Swap tile layer when theme changes
   useEffect(() => {
