@@ -3,13 +3,6 @@
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
@@ -47,58 +40,65 @@ export function ForgotPasswordForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       {success ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Check Your Email</CardTitle>
-            <CardDescription>Password reset instructions sent</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              If you registered using your email and password, you will receive
-              a password reset email.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col gap-4">
+          <h1 className="text-2xl font-bold text-foreground">Check your email</h1>
+          <p className="text-muted-foreground text-sm leading-relaxed">
+            If you registered with that email address, you will receive a
+            password reset link shortly.
+          </p>
+          <Link
+            href="/auth/login"
+            className="text-sm text-primary font-medium underline-offset-4 hover:underline"
+          >
+            Back to Sign In
+          </Link>
+        </div>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-2xl">Reset Your Password</CardTitle>
-            <CardDescription>
-              Type in your email and we&apos;ll send you a link to reset your
-              password
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleForgotPassword}>
-              <div className="flex flex-col gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="m@example.com"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-                {error && <p className="text-sm text-red-500">{error}</p>}
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Sending..." : "Send reset email"}
-                </Button>
-              </div>
-              <div className="mt-4 text-center text-sm">
-                Already have an account?{" "}
-                <Link
-                  href="/auth/login"
-                  className="underline underline-offset-4"
-                >
-                  Login
-                </Link>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+        <>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Reset your password</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              We&apos;ll send you a link to reset your password.
+            </p>
+          </div>
+          <form onSubmit={handleForgotPassword} className="flex flex-col gap-5">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="text-base h-12"
+              />
+            </div>
+            {error && (
+              <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                {error}
+              </p>
+            )}
+            <Button
+              type="submit"
+              className="w-full h-12 text-base font-semibold"
+              disabled={isLoading}
+            >
+              {isLoading ? "Sending…" : "Send Reset Link"}
+            </Button>
+          </form>
+          <p className="text-center text-sm text-muted-foreground">
+            Remember your password?{" "}
+            <Link
+              href="/auth/login"
+              className="text-primary font-medium underline-offset-4 hover:underline"
+            >
+              Sign in
+            </Link>
+          </p>
+        </>
       )}
     </div>
   );

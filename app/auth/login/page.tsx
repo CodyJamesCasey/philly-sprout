@@ -5,7 +5,7 @@ import { Leaf } from "lucide-react";
 export default function Page() {
   return (
     <div className="flex min-h-svh w-full">
-      {/* Left panel — branding */}
+      {/* Left branding panel — desktop only */}
       <div className="hidden lg:flex flex-col justify-between w-1/2 bg-primary p-12 text-primary-foreground">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
           <Leaf className="h-6 w-6" />
@@ -25,8 +25,8 @@ export default function Page() {
         </p>
       </div>
 
-      {/* Right panel — form */}
-      <div className="flex flex-1 flex-col items-center justify-center p-6 md:p-10">
+      {/* Form panel — full width on mobile */}
+      <div className="flex flex-1 flex-col items-center justify-center p-5 sm:p-8 md:p-10 bg-background">
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <Link

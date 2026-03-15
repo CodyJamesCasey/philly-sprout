@@ -36,7 +36,7 @@ const ScrollExpandMedia = ({
   const [showContent, setShowContent] = useState<boolean>(false);
   const [mediaFullyExpanded, setMediaFullyExpanded] = useState<boolean>(false);
   const [touchStartY, setTouchStartY] = useState<number>(0);
-  const [isMobileState, setIsMobileState] = useState<boolean>(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
 
   const sectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -54,12 +54,8 @@ const ScrollExpandMedia = ({
       } else if (!mediaFullyExpanded) {
         e.preventDefault();
         const scrollDelta = e.deltaY * 0.0009;
-        const newProgress = Math.min(
-          Math.max(scrollProgress + scrollDelta, 0),
-          1
-        );
+        const newProgress = Math.min(Math.max(scrollProgress + scrollDelta, 0), 1);
         setScrollProgress(newProgress);
-
         if (newProgress >= 1) {
           setMediaFullyExpanded(true);
           setShowContent(true);
@@ -75,7 +71,6 @@ const ScrollExpandMedia = ({
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!touchStartY) return;
-
       const touchY = e.touches[0].clientY;
       const deltaY = touchStartY - touchY;
 
@@ -84,21 +79,17 @@ const ScrollExpandMedia = ({
         e.preventDefault();
       } else if (!mediaFullyExpanded) {
         e.preventDefault();
+        // Higher sensitivity for mobile scroll-back
         const scrollFactor = deltaY < 0 ? 0.008 : 0.005;
         const scrollDelta = deltaY * scrollFactor;
-        const newProgress = Math.min(
-          Math.max(scrollProgress + scrollDelta, 0),
-          1
-        );
+        const newProgress = Math.min(Math.max(scrollProgress + scrollDelta, 0), 1);
         setScrollProgress(newProgress);
-
         if (newProgress >= 1) {
           setMediaFullyExpanded(true);
           setShowContent(true);
         } else if (newProgress < 0.75) {
           setShowContent(false);
         }
-
         setTouchStartY(touchY);
       }
     };
@@ -130,18 +121,23 @@ const ScrollExpandMedia = ({
 
   useEffect(() => {
     const checkIfMobile = (): void => {
-      setIsMobileState(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 768);
     };
-
     checkIfMobile();
     window.addEventListener("resize", checkIfMobile);
-
     return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
 
-  const mediaWidth = 300 + scrollProgress * (isMobileState ? 650 : 1250);
-  const mediaHeight = 400 + scrollProgress * (isMobileState ? 200 : 400);
-  const textTranslateX = scrollProgress * (isMobileState ? 180 : 150);
+  // Mobile: start smaller and expand to fill screen width
+  const mediaWidth = isMobile
+    ? 260 + scrollProgress * 700
+    : 300 + scrollProgress * 1250;
+  const mediaHeight = isMobile
+    ? 340 + scrollProgress * 260
+    : 400 + scrollProgress * 400;
+
+  // Cap slide distance on mobile so text doesn't fly off-screen
+  const textTranslateX = scrollProgress * (isMobile ? 60 : 150);
 
   const firstWord = title ? title.split(" ")[0] : "";
   const restOfTitle = title ? title.split(" ").slice(1).join(" ") : "";
@@ -150,10 +146,12 @@ const ScrollExpandMedia = ({
     <div
       ref={sectionRef}
       className="transition-colors duration-700 ease-in-out overflow-x-hidden"
+      // Prevent browser pull-to-refresh interfering with the hero gesture
+      style={{ touchAction: "none" }}
     >
       <section className="relative flex flex-col items-center justify-start min-h-[100dvh]">
         <div className="relative w-full flex flex-col items-center min-h-[100dvh]">
-          {/* Background image fades as media expands */}
+          {/* Background fades as media expands */}
           <motion.div
             className="absolute inset-0 z-0 h-full"
             initial={{ opacity: 0 }}
@@ -163,11 +161,10 @@ const ScrollExpandMedia = ({
             <Image
               src={bgImageSrc}
               alt="Background"
-              width={1920}
-              height={1080}
-              className="w-screen h-screen"
-              style={{ objectFit: "cover", objectPosition: "center" }}
+              fill
+              className="object-cover object-center"
               priority
+              sizes="100vw"
             />
             <div className="absolute inset-0 bg-black/10" />
           </motion.div>
@@ -176,12 +173,12 @@ const ScrollExpandMedia = ({
             <div className="flex flex-col items-center justify-center w-full h-[100dvh] relative">
               {/* Expanding media box */}
               <div
-                className="absolute z-0 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 transition-none rounded-2xl"
+                className="absolute z-0 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-none rounded-2xl overflow-hidden"
                 style={{
                   width: `${mediaWidth}px`,
                   height: `${mediaHeight}px`,
-                  maxWidth: "95vw",
-                  maxHeight: "85vh",
+                  maxWidth: "96vw",
+                  maxHeight: "82dvh",
                   boxShadow: "0px 0px 50px rgba(0, 0, 0, 0.3)",
                 }}
               >
@@ -205,10 +202,7 @@ const ScrollExpandMedia = ({
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                       />
-                      <div
-                        className="absolute inset-0 z-10"
-                        style={{ pointerEvents: "none" }}
-                      />
+                      <div className="absolute inset-0 z-10" style={{ pointerEvents: "none" }} />
                       <motion.div
                         className="absolute inset-0 bg-black/30 rounded-xl"
                         initial={{ opacity: 0.7 }}
@@ -231,10 +225,7 @@ const ScrollExpandMedia = ({
                         disablePictureInPicture
                         disableRemotePlayback
                       />
-                      <div
-                        className="absolute inset-0 z-10"
-                        style={{ pointerEvents: "none" }}
-                      />
+                      <div className="absolute inset-0 z-10" style={{ pointerEvents: "none" }} />
                       <motion.div
                         className="absolute inset-0 bg-black/30 rounded-xl"
                         initial={{ opacity: 0.7 }}
@@ -248,9 +239,10 @@ const ScrollExpandMedia = ({
                     <Image
                       src={mediaSrc}
                       alt={title || "Media content"}
-                      width={1280}
-                      height={720}
-                      className="w-full h-full object-cover rounded-xl"
+                      fill
+                      className="object-cover object-center rounded-xl"
+                      sizes="(max-width: 768px) 96vw, 1280px"
+                      priority
                     />
                     <motion.div
                       className="absolute inset-0 bg-black/30 rounded-xl"
@@ -261,21 +253,19 @@ const ScrollExpandMedia = ({
                   </div>
                 )}
 
-                {/* Date + scrollToExpand labels — slide in opposite directions */}
-                <div className="flex flex-col items-center text-center relative z-10 mt-4 transition-none">
+                {/* Date + scrollToExpand labels */}
+                <div className="flex flex-col items-center text-center relative z-10 mt-3 transition-none px-2">
                   {date && (
                     <p
-                      className="text-2xl text-green-200"
-                      style={{
-                        transform: `translateX(-${textTranslateX}vw)`,
-                      }}
+                      className="text-base md:text-2xl text-green-200 font-medium"
+                      style={{ transform: `translateX(-${textTranslateX}vw)` }}
                     >
                       {date}
                     </p>
                   )}
                   {scrollToExpand && (
                     <p
-                      className="text-green-200 font-medium text-center"
+                      className="text-sm md:text-base text-green-200 font-medium text-center mt-1"
                       style={{ transform: `translateX(${textTranslateX}vw)` }}
                     >
                       {scrollToExpand}
@@ -284,20 +274,20 @@ const ScrollExpandMedia = ({
                 </div>
               </div>
 
-              {/* Title — first word slides left, rest slides right */}
+              {/* Split-word title */}
               <div
-                className={`flex items-center justify-center text-center gap-4 w-full relative z-10 transition-none flex-col ${
+                className={`flex items-center justify-center text-center gap-2 md:gap-4 w-full relative z-10 transition-none flex-col ${
                   textBlend ? "mix-blend-difference" : "mix-blend-normal"
                 }`}
               >
                 <motion.h2
-                  className="text-4xl md:text-5xl lg:text-6xl font-bold text-green-200 transition-none"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-green-200 transition-none leading-tight"
                   style={{ transform: `translateX(-${textTranslateX}vw)` }}
                 >
                   {firstWord}
                 </motion.h2>
                 <motion.h2
-                  className="text-4xl md:text-5xl lg:text-6xl font-bold text-center text-green-200 transition-none"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-center text-green-200 transition-none leading-tight"
                   style={{ transform: `translateX(${textTranslateX}vw)` }}
                 >
                   {restOfTitle}
@@ -305,9 +295,9 @@ const ScrollExpandMedia = ({
               </div>
             </div>
 
-            {/* Children content — fades in after full expansion */}
+            {/* Children — fades in after full expansion */}
             <motion.section
-              className="flex flex-col w-full px-8 py-10 md:px-16 lg:py-20"
+              className="flex flex-col w-full px-4 py-8 sm:px-8 sm:py-12 md:px-16 lg:py-20"
               initial={{ opacity: 0 }}
               animate={{ opacity: showContent ? 1 : 0 }}
               transition={{ duration: 0.7 }}

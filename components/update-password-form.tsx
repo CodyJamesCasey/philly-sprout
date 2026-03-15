@@ -3,15 +3,9 @@
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -44,35 +38,51 @@ export function UpdatePasswordForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-2xl">Reset Your Password</CardTitle>
-          <CardDescription>
-            Please enter your new password below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleForgotPassword}>
-            <div className="flex flex-col gap-6">
-              <div className="grid gap-2">
-                <Label htmlFor="password">New password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="New password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-              {error && <p className="text-sm text-red-500">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save new password"}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Set new password</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Enter a new password for your account.
+        </p>
+      </div>
+
+      <form onSubmit={handleForgotPassword} className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="password" className="text-sm font-medium">New Password</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="New password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="text-base h-12"
+          />
+        </div>
+
+        {error && (
+          <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          className="w-full h-12 text-base font-semibold"
+          disabled={isLoading}
+        >
+          {isLoading ? "Saving…" : "Save New Password"}
+        </Button>
+      </form>
+
+      <p className="text-center text-sm text-muted-foreground">
+        <Link
+          href="/auth/login"
+          className="text-primary font-medium underline-offset-4 hover:underline"
+        >
+          Back to Sign In
+        </Link>
+      </p>
     </div>
   );
 }

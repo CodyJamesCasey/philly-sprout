@@ -12,8 +12,11 @@ async function NavAuthButton() {
   const user = data?.claims;
 
   return user ? (
-    <div className="flex items-center gap-3 text-sm">
-      <span className="text-white/70 hidden sm:inline">{user.email as string}</span>
+    <div className="flex items-center gap-2">
+      {/* Email hidden on very small screens to save space */}
+      <span className="text-white/70 text-xs hidden sm:inline truncate max-w-[140px]">
+        {user.email as string}
+      </span>
       <LogoutButton />
     </div>
   ) : (
@@ -22,14 +25,14 @@ async function NavAuthButton() {
         asChild
         size="sm"
         variant="ghost"
-        className="text-white hover:bg-white/10 hover:text-white"
+        className="text-white hover:bg-white/10 hover:text-white px-3"
       >
         <Link href="/auth/login">Sign in</Link>
       </Button>
       <Button
         asChild
         size="sm"
-        className="bg-green-500 hover:bg-green-400 text-white font-semibold"
+        className="bg-green-500 hover:bg-green-400 text-white font-semibold px-3"
       >
         <Link href="/auth/sign-up">Sign up</Link>
       </Button>
@@ -39,20 +42,22 @@ async function NavAuthButton() {
 
 export function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex justify-center border-b border-white/10 bg-black/20 backdrop-blur-md">
-      <div className="w-full max-w-6xl flex justify-between items-center px-5 py-3">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex justify-center border-b border-white/10 bg-black/20 backdrop-blur-md safe-area-inset-top">
+      <div className="w-full max-w-6xl flex justify-between items-center px-4 sm:px-5 py-3 min-h-[56px]">
         {/* Brand */}
         <Link
           href="/"
-          className="flex items-center gap-2 font-bold text-lg text-white hover:text-green-300 transition-colors"
+          className="flex items-center gap-2 font-bold text-base sm:text-lg text-white hover:text-green-300 transition-colors"
         >
-          <Leaf className="h-5 w-5 text-green-400" />
+          <Leaf className="h-5 w-5 text-green-400 flex-shrink-0" />
           <span>Philly Sprout</span>
         </Link>
 
-        {/* Right side */}
-        <div className="flex items-center gap-3">
-          <ThemeSwitcher />
+        {/* Right side — theme switcher hidden on xs to save space */}
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:block">
+            <ThemeSwitcher />
+          </div>
           <Suspense>
             <NavAuthButton />
           </Suspense>
