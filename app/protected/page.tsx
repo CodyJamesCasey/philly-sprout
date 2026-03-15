@@ -38,7 +38,7 @@ const quickActions = [
     icon: PlusCircle,
     title: "New Submission",
     description: "Photograph and submit a new street tree planting site.",
-    href: "#",
+    href: "/protected/submission/new",
     cta: "Start",
     primary: true,
   },
@@ -133,7 +133,7 @@ export default function ProtectedPage() {
           submission to get the ball rolling.
         </p>
         <Button asChild className="mt-5 min-h-[44px] px-6">
-          <Link href="#">Start Your First Submission</Link>
+          <Link href="/protected/submission/new">Start Your First Submission</Link>
         </Button>
       </div>
     </div>
