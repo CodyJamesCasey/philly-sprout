@@ -10,6 +10,11 @@ import {
   XCircle,
   HelpCircle,
   Loader2,
+  Navigation,
+  FileSearch,
+  ClipboardCheck,
+  TreePine,
+  Circle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +46,15 @@ type TreeCandidate = {
   pole_hydrant_clearance: string | null;
   tree_clearance: string | null;
   ai_confidence_notes: string | null;
+  submission_status: string;
 };
+
+const STATUS_STEPS = [
+  { key: "submitted", label: "Submitted", icon: Circle },
+  { key: "under_review", label: "Under Review", icon: FileSearch },
+  { key: "approved", label: "Approved", icon: ClipboardCheck },
+  { key: "tree_planted", label: "Tree Planted", icon: TreePine },
+] as const;
 
 function suitabilityVariant(suitability: string | null) {
   switch (suitability) {
@@ -86,6 +99,55 @@ function CriterionRow({
   );
 }
 
+function StatusTracker({ status }: { status: string }) {
+  const currentIndex = STATUS_STEPS.findIndex((s) => s.key === status);
+  const activeIndex = currentIndex === -1 ? 0 : currentIndex;
+
+  return (
+    <div className="flex items-center gap-0">
+      {STATUS_STEPS.map((step, i) => {
+        const isComplete = i < activeIndex;
+        const isCurrent = i === activeIndex;
+        const Icon = step.icon;
+
+        return (
+          <div key={step.key} className="flex items-center flex-1 last:flex-initial">
+            <div className="flex flex-col items-center gap-1.5">
+              <div
+                className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors ${
+                  isComplete
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : isCurrent
+                      ? "bg-primary/10 border-primary text-primary"
+                      : "bg-muted border-border text-muted-foreground"
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+              </div>
+              <span
+                className={`text-[10px] font-medium text-center leading-tight max-w-[60px] ${
+                  isComplete || isCurrent
+                    ? "text-foreground"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {i < STATUS_STEPS.length - 1 && (
+              <div
+                className={`flex-1 h-0.5 min-w-[16px] mx-1 mb-5 ${
+                  i < activeIndex ? "bg-primary" : "bg-border"
+                }`}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("en-US", {
     weekday: "short",
@@ -116,6 +178,7 @@ async function SubmissionDetail({ id }: { id: string }) {
   }
 
   const row = data as TreeCandidate;
+  if (!row.submission_status) row.submission_status = "submitted";
 
   const criteria = [
     { label: "Pit Size (3' × 3' min)", value: row.pit_size },
@@ -158,7 +221,7 @@ async function SubmissionDetail({ id }: { id: string }) {
               {row.overall_suitability ?? "Unrated"}
             </Badge>
           </div>
-          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
               {formatDate(row.created_at)}
@@ -167,9 +230,28 @@ async function SubmissionDetail({ id }: { id: string }) {
               <MapPin className="w-3.5 h-3.5" />
               {row.latitude.toFixed(5)}, {row.longitude.toFixed(5)}
             </span>
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${row.latitude},${row.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-primary hover:underline"
+            >
+              <Navigation className="w-3.5 h-3.5" />
+              Directions
+            </a>
           </div>
         </div>
       </div>
+
+      {/* Status */}
+      <Card className="border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <StatusTracker status={row.submission_status} />
+        </CardContent>
+      </Card>
 
       {/* Photo(s) */}
       {row.photo_url ? (() => {
@@ -236,6 +318,71 @@ async function SubmissionDetail({ id }: { id: string }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Activity Timeline */}
+      <Card className="border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="relative pl-6">
+            <div className="absolute left-[7px] top-1 bottom-1 w-px bg-border" />
+            {(() => {
+              const events: { label: string; date: string; active: boolean }[] = [
+                {
+                  label: "Site submitted",
+                  date: row.created_at,
+                  active: true,
+                },
+              ];
+              if (row.ai_confidence_notes) {
+                events.push({
+                  label: "AI analysis completed",
+                  date: row.created_at,
+                  active: true,
+                });
+              }
+              const statusIndex = STATUS_STEPS.findIndex(
+                (s) => s.key === row.submission_status
+              );
+              if (statusIndex >= 1) {
+                events.push({
+                  label: "Marked as under review",
+                  date: row.created_at,
+                  active: true,
+                });
+              }
+              if (statusIndex >= 2) {
+                events.push({
+                  label: "Approved for planting",
+                  date: row.created_at,
+                  active: true,
+                });
+              }
+              if (statusIndex >= 3) {
+                events.push({
+                  label: "Tree planted!",
+                  date: row.created_at,
+                  active: true,
+                });
+              }
+              return events.map((event, i) => (
+                <div key={i} className="relative flex items-start gap-3 pb-4 last:pb-0">
+                  <div className="absolute left-[-20px] top-1.5 w-[15px] h-[15px] rounded-full border-2 border-primary bg-background" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {event.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(event.date)}
+                    </p>
+                  </div>
+                </div>
+              ));
+            })()}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Location map */}
       <Card className="border-border overflow-hidden">
