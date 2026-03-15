@@ -151,7 +151,6 @@ export default function ProtectedPage() {
         <RecentSubmissionsMap />
       </Suspense>
 
-      {/* Quick actions — horizontal list on mobile */}
       <div>
         <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3">
           Quick Actions
