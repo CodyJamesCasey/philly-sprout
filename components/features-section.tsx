@@ -11,19 +11,19 @@ const features = [
     icon: ShieldCheck,
     title: "AI-Assisted Criteria Check",
     description:
-      "Claude Vision evaluates pit size, utility clearance, driveway proximity, and more — so you submit only qualified sites.",
+      "AI evaluates pit size, clearance from driveways, utility lines, and other PHS criteria — so you submit only qualified sites.",
   },
   {
     icon: Leaf,
     title: "Aligned with PHS Standards",
     description:
-      "Every form field maps directly to the official PHS TreeVitalize property owner application. No guesswork, no omissions.",
+      "Every form field maps to the official PHS criteria for street tree planting.",
   },
   {
     icon: Users,
-    title: "Community-Driven",
+    title: "Discovery On-Ramp",
     description:
-      "Track your submissions, report tree health concerns, and help your Tree Tenders group build a stronger urban canopy.",
+      "Don't know your local Tree Tenders group? Philly Sprout helps you get on their radar — they handle permits, pit prep, and planting.",
   },
 ];
 
@@ -36,7 +36,7 @@ export function FeaturesSection() {
             Why Philly Sprout
           </span>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
-            Smarter tree planting starts here
+            Identify candidates. Grow Philly's canopy.
           </h2>
         </div>
 

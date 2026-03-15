@@ -13,12 +13,12 @@ export function SiteFooter() {
         <p className="max-w-xs sm:max-w-md">
           Supporting the{" "}
           <a
-            href="https://phsonline.org/programs/treevitalize"
+            href="https://phsonline.org/programs/tree-programs"
             target="_blank"
             rel="noreferrer"
             className="underline underline-offset-4 hover:text-primary transition-colors"
           >
-            PHS TreeVitalize
+            PHS
           </a>{" "}
           program. Not affiliated with the Pennsylvania Horticultural Society.
         </p>
