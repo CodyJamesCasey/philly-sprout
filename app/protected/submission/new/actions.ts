@@ -35,7 +35,6 @@ export async function createSubmission(
     no_obstructions: (formData.get("no_obstructions") as string) || null,
     driveway_clearance:
       (formData.get("driveway_clearance") as string) || null,
-    not_for_sale: (formData.get("not_for_sale") as string) || null,
     corner_clearance:
       (formData.get("corner_clearance") as string) || null,
     pole_hydrant_clearance:
