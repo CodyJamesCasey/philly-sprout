@@ -70,33 +70,6 @@ function formatDate(iso: string) {
   });
 }
 
-function ViewToggle({ current }: { current: "mine" | "all" }) {
-  return (
-    <div className="flex rounded-lg border border-border bg-muted p-0.5">
-      <Link
-        href="/protected/submissions"
-        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-          current === "mine"
-            ? "bg-background text-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        Mine
-      </Link>
-      <Link
-        href="/protected/submissions?view=all"
-        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-          current === "all"
-            ? "bg-background text-foreground shadow-sm"
-            : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        All
-      </Link>
-    </div>
-  );
-}
-
 function SubmissionCard({
   row,
   isOwner,
@@ -143,7 +116,14 @@ function SubmissionCard({
   );
 }
 
-async function SubmissionsList({ view }: { view: "mine" | "all" }) {
+async function SubmissionsContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const params = await searchParams;
+  const view = params.view === "all" ? "all" : "mine";
+
   const supabase = await createClient();
 
   const { data: authData, error: authError } =
@@ -171,48 +151,68 @@ async function SubmissionsList({ view }: { view: "mine" | "all" }) {
 
   const submissions = (data ?? []) as TreeCandidate[];
 
-  if (submissions.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border rounded-2xl">
-        <TreePine className="w-10 h-10 text-primary/40 mb-3" />
-        <h3 className="font-semibold text-foreground mb-1">
-          {view === "mine" ? "No submissions yet" : "No submissions found"}
-        </h3>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          {view === "mine"
-            ? "Head out and find a potential tree pit to get started."
-            : "No one has submitted a site yet. Be the first!"}
-        </p>
-        <Button asChild className="mt-5">
-          <Link href="/protected/submission/new">
-            Start Your First Submission
-          </Link>
-        </Button>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-3">
-      {submissions.map((row) => (
-        <SubmissionCard
-          key={row.id}
-          row={row}
-          isOwner={row.user_id === currentUserId}
-        />
-      ))}
-    </div>
+    <>
+      <div className="flex rounded-lg border border-border bg-muted p-0.5 self-start">
+        <Link
+          href="/protected/submissions"
+          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            view === "mine"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Mine
+        </Link>
+        <Link
+          href="/protected/submissions?view=all"
+          className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            view === "all"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          All
+        </Link>
+      </div>
+
+      {submissions.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border rounded-2xl">
+          <TreePine className="w-10 h-10 text-primary/40 mb-3" />
+          <h3 className="font-semibold text-foreground mb-1">
+            {view === "mine" ? "No submissions yet" : "No submissions found"}
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            {view === "mine"
+              ? "Head out and find a potential tree pit to get started."
+              : "No one has submitted a site yet. Be the first!"}
+          </p>
+          <Button asChild className="mt-5">
+            <Link href="/protected/submission/new">
+              Start Your First Submission
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {submissions.map((row) => (
+            <SubmissionCard
+              key={row.id}
+              row={row}
+              isOwner={row.user_id === currentUserId}
+            />
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
-export default async function SubmissionsPage({
+export default function SubmissionsPage({
   searchParams,
 }: {
   searchParams: Promise<{ view?: string }>;
 }) {
-  const params = await searchParams;
-  const view = params.view === "all" ? "all" : "mine";
-
   return (
     <div className="flex-1 w-full flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
@@ -236,8 +236,6 @@ export default async function SubmissionsPage({
         </Button>
       </div>
 
-      <ViewToggle current={view} />
-
       <Suspense
         fallback={
           <div className="flex items-center justify-center py-16">
@@ -245,7 +243,7 @@ export default async function SubmissionsPage({
           </div>
         }
       >
-        <SubmissionsList view={view} />
+        <SubmissionsContent searchParams={searchParams} />
       </Suspense>
     </div>
   );
