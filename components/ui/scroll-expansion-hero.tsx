@@ -191,7 +191,7 @@ const ScrollExpandMedia = ({
                 <div className="flex flex-col items-center text-center relative z-10 mt-3 transition-none px-2">
                   {date && (
                     <motion.p
-                      className="text-base md:text-2xl text-green-200 font-medium"
+                      className="text-base md:text-2xl text-white/95 font-medium drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]"
                       style={{ transform: leftTextTransform }}
                     >
                       {date}
@@ -199,7 +199,7 @@ const ScrollExpandMedia = ({
                   )}
                   {scrollToExpand && (
                     <motion.p
-                      className="text-sm md:text-base text-green-200 font-medium text-center mt-1"
+                      className="text-sm md:text-base text-white/90 font-medium text-center mt-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.55)]"
                       style={{ transform: rightTextTransform }}
                     >
                       {scrollToExpand}
@@ -215,13 +215,13 @@ const ScrollExpandMedia = ({
                 }`}
               >
                 <motion.h2
-                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-green-200 transition-none leading-tight"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white transition-none leading-tight drop-shadow-[0_3px_14px_rgba(0,0,0,0.6)]"
                   style={{ transform: leftTextTransform }}
                 >
                   {firstWord}
                 </motion.h2>
                 <motion.h2
-                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-center text-green-200 transition-none leading-tight"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-center text-white transition-none leading-tight drop-shadow-[0_3px_14px_rgba(0,0,0,0.6)]"
                   style={{ transform: rightTextTransform }}
                 >
                   {restOfTitle}

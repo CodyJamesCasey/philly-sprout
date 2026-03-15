@@ -208,7 +208,7 @@ async function SubmissionDetail({ id }: { id: string }) {
       {/* Header */}
       <div className="flex items-start gap-3">
         <Button asChild variant="ghost" size="icon" className="shrink-0 mt-0.5">
-          <Link href="/map">
+          <Link href="/submissions">
             <ArrowLeft className="w-5 h-5" />
           </Link>
         </Button>
