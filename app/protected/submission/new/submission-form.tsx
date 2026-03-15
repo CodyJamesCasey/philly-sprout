@@ -45,13 +45,41 @@ const CRITERIA_FIELDS: {
   label: string;
   description: string;
 }[] = [
-  { name: "pit_size", label: "Pit Size", description: "Tree pit is at least 3' × 3'" },
-  { name: "pit_edge_clearance", label: "Pit Edge Clearance", description: "Pit edge is ≥ 2' from curb face" },
-  { name: "no_obstructions", label: "No Obstructions", description: "No utilities, grates, or vaults in the pit" },
-  { name: "driveway_clearance", label: "Driveway Clearance", description: "Pit is ≥ 3' from any driveway" },
-  { name: "corner_clearance", label: "Corner Clearance", description: "Pit is ≥ 25' from intersection" },
-  { name: "pole_hydrant_clearance", label: "Pole / Hydrant Clearance", description: "≥ 10' from fire hydrant, ≥ 5' from utility pole" },
-  { name: "tree_clearance", label: "Tree Clearance", description: "≥ 20' from nearest existing tree" },
+  {
+    name: "pit_size",
+    label: "Minimum Tree Pit Size",
+    description: "At least 3 feet × 3 feet of open ground available (larger preferred)",
+  },
+  {
+    name: "pit_edge_clearance",
+    label: "ADA Sidewalk Clearance",
+    description: "Pit edge at least 3 feet from steps, stoops, or walls to keep 3 feet of clear walking path",
+  },
+  {
+    name: "no_obstructions",
+    label: "No Immediate Obstructions",
+    description: "Clear of steps, doorways, alleyways, and handicapped parking signs",
+  },
+  {
+    name: "driveway_clearance",
+    label: "Driveway & Drain Clearance",
+    description: "At least 5 feet from driveways, manhole covers, storm drains, and utility lines",
+  },
+  {
+    name: "corner_clearance",
+    label: "Corner & Signal Clearance",
+    description: "At least 30 feet from street corners, stop signs, and traffic lights",
+  },
+  {
+    name: "pole_hydrant_clearance",
+    label: "Pole & Hydrant Clearance",
+    description: "At least 15 feet from light poles, utility poles, and fire hydrants",
+  },
+  {
+    name: "tree_clearance",
+    label: "Distance from Other Trees",
+    description: "At least 15–30 feet from existing trees (depending on their size)",
+  },
 ];
 
 // ─── Controlled CriteriaSelect ────────────────────────────────────────────────
