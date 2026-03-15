@@ -39,32 +39,33 @@ You will be given one or more photos of a sidewalk location. Evaluate the site a
 ## Criteria to Evaluate
 
 ### pit_size
-The open soil area (tree pit) must be at least 3 feet × 3 feet.
-- pass: Pit appears ≥ 3×3 ft based on visual scale cues (curb height ~6", standard brick ~2.25"×3.75", car tire ~24" diameter, adult shoe ~11").
-- fail: Pit is clearly smaller than 3×3 ft.
-- unclear: Cannot determine pit dimensions from available photos.
-- suggested_angle (if unclear): "Photograph the pit from directly above. Place a common object (shoe, water bottle) in the pit for scale."
+The proposed planting location must have at least 3 feet × 3 feet of plantable area available.
+- Important: Do not assume a designated or pre-existing planting pit must already exist. New candidate sites may currently be plain sidewalk/curb strip where a pit could be created.
+- pass: The visible space appears to support a future planting area of ≥ 3×3 ft based on visual scale cues (curb height ~6", standard brick ~2.25"×3.75", car tire ~24" diameter, adult shoe ~11").
+- fail: The available space is clearly too constrained for a 3×3 ft planting area.
+- unclear: Cannot determine available plantable dimensions from available photos.
+- suggested_angle (if unclear): "Photograph the exact proposed planting spot from directly above and include a common object (shoe, water bottle) for scale."
 
 ### pit_edge_clearance
-The pit edge must be at least 2 feet from the curb face.
-- pass: Visible gap of ≥ 2 ft between pit edge and curb.
-- fail: Pit edge is clearly within 2 ft of the curb.
+The proposed planting area edge must be at least 2 feet from the curb face.
+- pass: Visible or inferable gap of ≥ 2 ft between the proposed planting area edge and curb.
+- fail: The proposed planting area edge is clearly within 2 ft of the curb.
 - unclear: Cannot determine clearance from available photos.
-- suggested_angle (if unclear): "Take a photo showing the full distance between the pit edge and the curb, ideally from the side."
+- suggested_angle (if unclear): "Take a side-angle photo showing the full distance between the curb and the exact proposed planting spot."
 
 ### no_obstructions
-The pit must be free of utility covers, grates, vents, pipes, or other underground infrastructure markers.
-- pass: No visible obstructions in or immediately around the pit.
-- fail: Utility covers, grates, vents, or infrastructure markers are visible in the pit area.
+The proposed planting area must be free of utility covers, grates, vents, pipes, sewer features, or other sidewalk infrastructure markers.
+- pass: No visible sidewalk features or infrastructure obstructions in or immediately around the proposed planting area.
+- fail: Any sidewalk infrastructure feature is visible in the proposed planting area (including sewer lines, sewer caps/covers, utility covers, grates, vents, or pipes).
 - unclear: Cannot determine from available photos.
-- suggested_angle (if unclear): "Take a close-up photo of the pit surface and the surrounding 3 feet of sidewalk."
+- suggested_angle (if unclear): "Take a close-up photo of the exact proposed planting spot and the surrounding 3 feet of sidewalk."
 
 ### driveway_clearance
 The site must be at least 3 feet from the nearest driveway curb cut.
 - pass: No driveway curb cut visible within approximately 3 feet.
 - fail: A driveway curb cut is clearly within 3 feet of the site.
 - unclear: Cannot determine from available photos.
-- suggested_angle (if unclear): "Take a photo looking up and down the block to show the nearest driveway curb cut and its distance from the pit."
+- suggested_angle (if unclear): "Take a photo looking up and down the block to show the nearest driveway curb cut and its distance from the proposed planting spot."
 
 ### corner_clearance
 The site must be at least 25 feet from a street intersection.
@@ -78,7 +79,7 @@ The site must be at least 10 feet from a fire hydrant and at least 5 feet from a
 - pass: No fire hydrant within ~10 ft and no utility pole within ~5 ft.
 - fail: A fire hydrant or utility pole is clearly within the required clearance.
 - unclear: Cannot determine from available photos.
-- suggested_angle (if unclear): "Take a photo showing the full sidewalk around the pit, including any nearby poles or hydrants."
+- suggested_angle (if unclear): "Take a photo showing the full sidewalk around the proposed planting spot, including any nearby poles or hydrants."
 
 ### tree_clearance
 The site must be at least 20 feet from the nearest existing street tree.

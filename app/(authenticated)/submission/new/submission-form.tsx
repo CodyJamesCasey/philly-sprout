@@ -1,7 +1,16 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useRef, useState } from "react";
-import { Camera, MapPin, Loader2, ImageIcon, Sparkles, RotateCcw, LocateFixed } from "lucide-react";
+import {
+  Camera,
+  MapPin,
+  Loader2,
+  ImageIcon,
+  Sparkles,
+  RotateCcw,
+  LocateFixed,
+  AlertTriangle,
+} from "lucide-react";
 import { forwardGeocode, reverseGeocode } from "@/lib/geocode";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,6 +113,10 @@ function CriteriaSelect({
   aiResult,
   isAiFilled,
 }: CriteriaSelectProps) {
+  const hasAiResult = !!aiResult;
+  const isFailed = hasAiResult && value === "fail";
+  const isAiAutofilledFailure = isFailed && isAiFilled;
+
   // Show angle re-prompt when AI returned "unclear" AND the user hasn't
   // manually changed this field to something else.
   const showAnglePrompt =
@@ -112,10 +125,22 @@ function CriteriaSelect({
     value === "unclear";
 
   return (
-    <div className="space-y-2">
+    <div
+      className={`space-y-2 rounded-lg p-2 transition-colors ${
+        isFailed
+          ? "bg-red-50/70 ring-1 ring-red-500/35 shadow-[0_0_0_3px_rgba(239,68,68,0.1)] dark:bg-red-950/20 dark:ring-red-500/45 dark:shadow-[0_0_0_3px_rgba(239,68,68,0.12)]"
+          : ""
+      }`}
+    >
       {/* Label row with AI badge */}
       <div className="flex items-center gap-2 flex-wrap">
         <Label htmlFor={name}>{label}</Label>
+        {isAiAutofilledFailure && (
+          <span className="inline-flex items-center gap-1 text-xs text-red-700 dark:text-red-300 bg-red-100/90 dark:bg-red-950/30 border border-red-300/70 dark:border-red-700/60 px-2 py-0.5 rounded-full font-medium">
+            <AlertTriangle className="w-3 h-3" />
+            AI flagged fail
+          </span>
+        )}
         {isAiFilled && (
           <span className="inline-flex items-center gap-1 text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-full font-medium">
             <Sparkles className="w-3 h-3" />
@@ -128,14 +153,27 @@ function CriteriaSelect({
 
       {/* AI reason (shown after analysis) */}
       {aiResult?.reason && (
-        <p className="text-xs text-muted-foreground italic border-l-2 border-primary/30 pl-2">
+        <p
+          className={`text-xs italic border-l-2 pl-2 ${
+            isFailed
+              ? "text-red-700 border-red-400 dark:text-red-300 dark:border-red-500/60"
+              : "text-muted-foreground border-primary/30"
+          }`}
+        >
           {aiResult.reason}
         </p>
       )}
 
       {/* Controlled select — keeps name attr so Server Action reads it */}
       <Select name={name} value={value} onValueChange={onChange}>
-        <SelectTrigger id={name} className="w-full">
+        <SelectTrigger
+          id={name}
+          className={`w-full ${
+            isFailed
+              ? "border-red-500/85 text-red-700 ring-2 ring-red-500/30 shadow-[0_0_0_2px_rgba(239,68,68,0.12)] dark:border-red-500/70 dark:text-red-200 dark:ring-red-500/35 dark:shadow-[0_0_0_2px_rgba(239,68,68,0.15)]"
+              : ""
+          }`}
+        >
           <SelectValue placeholder="Select…" />
         </SelectTrigger>
         <SelectContent>
@@ -144,6 +182,12 @@ function CriteriaSelect({
           <SelectItem value="unclear">Unclear</SelectItem>
         </SelectContent>
       </Select>
+
+      {isFailed && (
+        <p className="text-xs font-medium text-red-700 dark:text-red-300">
+          AI flagged this criterion as failed. Double-check the photo/angle before submitting.
+        </p>
+      )}
 
       {/* Angle re-prompt banner */}
       {showAnglePrompt && (
