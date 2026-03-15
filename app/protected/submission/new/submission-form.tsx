@@ -23,6 +23,7 @@ import {
 import { createSubmission, type SubmissionState } from "./actions";
 
 type GeoPermissionState = "unknown" | "granted" | "prompt" | "denied" | "unsupported";
+type MobilePlatform = "ios" | "android" | "other";
 
 const CRITERIA_FIELDS = [
   { name: "pit_size", label: "Pit Size", description: "Tree pit is at least 3' × 3'" },
@@ -65,15 +66,52 @@ export function SubmissionForm() {
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [requestingCamera, setRequestingCamera] = useState(false);
   const [geoPermission, setGeoPermission] = useState<GeoPermissionState>("unknown");
-  const [isIOSSafari, setIsIOSSafari] = useState(false);
+  const [platform, setPlatform] = useState<MobilePlatform>("other");
+  const [isSafari, setIsSafari] = useState(false);
+  const [isChrome, setIsChrome] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function refreshGeoPermissionState(): Promise<GeoPermissionState> {
+    if (!navigator.permissions?.query) {
+      return "unknown";
+    }
+
+    try {
+      const permissionStatus = await navigator.permissions.query({
+        name: "geolocation",
+      });
+      const state = permissionStatus.state as GeoPermissionState;
+      setGeoPermission(state);
+      return state;
+    } catch {
+      return "unknown";
+    }
+  }
+
+  function handleRetryLocation() {
+    // Keep geolocation request directly in the user-gesture call stack.
+    // Some mobile browsers suppress permission prompts if we await first.
+    acquireLocation();
+
+    // Refresh the permission state in parallel for UI messaging.
+    void refreshGeoPermissionState();
+  }
+
+  function handleRetryRefresh() {
+    window.location.reload();
+  }
 
   useEffect(() => {
     const ua = navigator.userAgent;
     const isiOS =
       /iP(hone|ad|od)/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
-    setIsIOSSafari(isiOS && isSafari);
+    const isAndroid = /Android/.test(ua);
+    const safari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+    const chrome = /Chrome|CriOS/.test(ua) && !/Edg|OPR|SamsungBrowser|DuckDuckGo/.test(ua);
+
+    setPlatform(isiOS ? "ios" : isAndroid ? "android" : "other");
+    setIsSafari(safari);
+    setIsChrome(chrome);
 
     if (!navigator.geolocation) {
       setGeoPermission("unsupported");
@@ -122,6 +160,21 @@ export function SubmissionForm() {
     };
   }, []);
 
+  useEffect(() => {
+    function syncOnReturn() {
+      if (document.visibilityState === "hidden") return;
+      void refreshGeoPermissionState();
+    }
+
+    window.addEventListener("focus", syncOnReturn);
+    document.addEventListener("visibilitychange", syncOnReturn);
+
+    return () => {
+      window.removeEventListener("focus", syncOnReturn);
+      document.removeEventListener("visibilitychange", syncOnReturn);
+    };
+  }, []);
+
   function acquireLocation() {
     if (!navigator.geolocation) {
       setGpsError("Geolocation is not supported by this browser.");
@@ -138,9 +191,13 @@ export function SubmissionForm() {
       (err) => {
         if (err.code === err.PERMISSION_DENIED) {
           setGeoPermission("denied");
-          if (isIOSSafari) {
+          if (platform === "ios" && isSafari) {
             setGpsError(
               "Location access is off for Safari on this iPhone/iPad. Turn it on in iOS Settings, then retry.",
+            );
+          } else if (platform === "android") {
+            setGpsError(
+              "Location access is off on this Android device. Enable it in browser/app permissions, then retry.",
             );
           } else {
             setGpsError(
@@ -291,7 +348,7 @@ export function SubmissionForm() {
                       If no prompt appears, open your browser site settings and set Location to
                       Allow, then return and retry.
                     </p>
-                    {isIOSSafari && (
+                    {platform === "ios" && isSafari && (
                       <div className="rounded-md border border-amber-300/60 bg-amber-50 p-3 text-xs text-amber-900">
                         <p className="font-medium">Safari location is currently disabled</p>
                         <ol className="mt-2 list-decimal space-y-1 pl-4">
@@ -303,14 +360,37 @@ export function SubmissionForm() {
                         </ol>
                       </div>
                     )}
+                    {platform === "android" && (
+                      <div className="rounded-md border border-amber-300/60 bg-amber-50 p-3 text-xs text-amber-900">
+                        <p className="font-medium">Location is currently blocked on Android</p>
+                        <ol className="mt-2 list-decimal space-y-1 pl-4">
+                          {isChrome ? (
+                            <>
+                              <li>Open Chrome Settings</li>
+                              <li>Go to Site settings -&gt; Location</li>
+                              <li>Make sure Location is allowed</li>
+                              <li>In this site&apos;s settings, set Location to Allow</li>
+                            </>
+                          ) : (
+                            <>
+                              <li>Open your browser&apos;s Site Settings</li>
+                              <li>Set Location permission for this site to Allow</li>
+                            </>
+                          )}
+                          <li>Open Android Settings -&gt; Apps -&gt; your browser -&gt; Permissions</li>
+                          <li>Set Location to Allow while using the app</li>
+                          <li>Enable precise/accurate location if available</li>
+                        </ol>
+                      </div>
+                    )}
                   </>
                 )}
-                <Button type="button" variant="outline" size="sm" onClick={acquireLocation}>
+                <Button type="button" variant="outline" size="sm" onClick={handleRetryRefresh}>
                   Retry
                 </Button>
               </div>
             ) : geoPermission === "prompt" || geoPermission === "unknown" ? (
-              <Button type="button" variant="outline" size="sm" onClick={acquireLocation}>
+              <Button type="button" variant="outline" size="sm" onClick={handleRetryLocation}>
                 Use current location
               </Button>
             ) : null}
