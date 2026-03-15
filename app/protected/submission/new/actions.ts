@@ -27,13 +27,21 @@ export async function createSubmission(
     return { error: "Location is required. Please allow GPS access." };
   }
 
+  const photoUrls = (formData.getAll("photo_url") as string[]).filter(Boolean);
+  const photoUrl =
+    photoUrls.length > 0
+      ? photoUrls.length === 1
+        ? photoUrls[0]
+        : JSON.stringify(photoUrls)
+      : null;
+
   const row = {
     user_id: authData.claims.sub as string,
     latitude: parseFloat(latitude as string),
     longitude: parseFloat(longitude as string),
     street_address: (formData.get("street_address") as string) || null,
     notes: (formData.get("notes") as string) || null,
-    photo_url: (formData.get("photo_url") as string) || null,
+    photo_url: photoUrl,
     overall_suitability:
       (formData.get("overall_suitability") as string) || null,
     pit_size: (formData.get("pit_size") as string) || null,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Camera, MapPin, Loader2, ImageIcon, X } from "lucide-react";
+import { Camera, MapPin, Loader2, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { CameraCaptureView } from "@/components/camera-capture-view";
 import { CameraPermissionPrompt } from "@/components/camera-permission-prompt";
+import { PhotoGallery, type PhotoEntry } from "@/components/photo-gallery";
 import { createSubmission, type SubmissionState } from "./actions";
 
 type GeoPermissionState = "unknown" | "granted" | "prompt" | "denied" | "unsupported";
@@ -63,9 +64,9 @@ export function SubmissionForm() {
     {},
   );
 
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [expandedPhotoIndex, setExpandedPhotoIndex] = useState<number | null>(null);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [showCameraPermissionUI, setShowCameraPermissionUI] = useState(false);
   const [requestingCamera, setRequestingCamera] = useState(false);
@@ -227,9 +228,10 @@ export function SubmissionForm() {
     );
   }
 
-  async function uploadPhotoFile(file: File) {
+  async function uploadPhotoFile(file: File): Promise<void> {
     setPhotoError(null);
-    setPhotoPreview(URL.createObjectURL(file));
+    const preview = URL.createObjectURL(file);
+    setPhotos((prev) => [...prev, { preview, url: null }]);
     setUploadingPhoto(true);
     try {
       const supabase = createClient();
@@ -239,7 +241,8 @@ export function SubmissionForm() {
       } = await supabase.auth.getUser();
       if (authError || !user) {
         setPhotoError("You must be signed in to upload a photo.");
-        setPhotoPreview(null);
+        setPhotos((prev) => prev.filter((p) => p.preview !== preview));
+        URL.revokeObjectURL(preview);
         return;
       }
       const ext = file.name.split(".").pop() || "jpg";
@@ -257,34 +260,44 @@ export function SubmissionForm() {
           ? " Ensure the tree-spots bucket has policies allowing authenticated uploads in Supabase Dashboard > Storage."
           : "";
         setPhotoError(`${error.message}${hint}`);
-        setPhotoPreview(null);
+        setPhotos((prev) => prev.filter((p) => p.preview !== preview));
+        URL.revokeObjectURL(preview);
         return;
       }
       const { data } = supabase.storage.from("tree-spots").getPublicUrl(path);
-      setPhotoUrl(data.publicUrl);
+      setPhotos((prev) =>
+        prev.map((p) => (p.preview === preview ? { ...p, url: data.publicUrl } : p)),
+      );
     } catch (err) {
       setPhotoError(err instanceof Error ? err.message : "Upload failed.");
-      setPhotoPreview(null);
+      setPhotos((prev) => prev.filter((p) => p.preview !== preview));
+      URL.revokeObjectURL(preview);
     } finally {
       setUploadingPhoto(false);
     }
   }
 
   async function handlePhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await uploadPhotoFile(file);
+    const files = e.target.files;
+    if (!files?.length) return;
+    for (const file of Array.from(files)) {
+      await uploadPhotoFile(file);
+    }
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  function clearPhoto() {
-    setPhotoPreview(null);
-    setPhotoUrl(null);
+  function removePhoto(index: number) {
+    setPhotos((prev) => {
+      const removed = prev[index];
+      if (removed?.preview) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+    if (expandedPhotoIndex === index) {
+      setExpandedPhotoIndex(null);
+    } else if (expandedPhotoIndex !== null && expandedPhotoIndex > index) {
+      setExpandedPhotoIndex(expandedPhotoIndex - 1);
+    }
     setPhotoError(null);
-    setCameraStream(null);
-    setCameraUnsupported(false);
-    setShowCameraPermissionUI(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleTapToTakePhoto() {
@@ -360,7 +373,11 @@ export function SubmissionForm() {
       {/* Hidden fields */}
       <input type="hidden" name="latitude" value={location?.lat ?? ""} />
       <input type="hidden" name="longitude" value={location?.lng ?? ""} />
-      <input type="hidden" name="photo_url" value={photoUrl ?? ""} />
+      {photos
+        .filter((p) => p.url)
+        .map((p) => (
+          <input key={p.url!} type="hidden" name="photo_url" value={p.url!} />
+        ))}
 
       {/* ── Photo Capture ── */}
       <Card>
@@ -415,28 +432,38 @@ export function SubmissionForm() {
               onCapture={handleCapturePhoto}
               onCancel={closeCamera}
             />
-          ) : photoPreview ? (
-            <div className="relative">
-              {uploadingPhoto && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg z-10">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              )}
-              <img
-                src={photoPreview}
-                alt="Site preview"
-                className="w-full max-h-80 object-cover rounded-lg border border-border"
+          ) : photos.length > 0 ? (
+            <div className="space-y-3">
+              <PhotoGallery
+                photos={photos}
+                expandedIndex={expandedPhotoIndex}
+                onExpand={setExpandedPhotoIndex}
+                onClose={() => setExpandedPhotoIndex(null)}
+                onRemove={removePhoto}
+                uploading={uploadingPhoto}
               />
-              <Button
-                type="button"
-                variant="destructive"
-                size="icon"
-                className="absolute top-2 right-2 h-8 w-8"
-                onClick={clearPhoto}
-                disabled={uploadingPhoto}
-              >
-                <X className="w-4 h-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowCameraPermissionUI(true)}
+                  disabled={uploadingPhoto}
+                >
+                  <Camera className="w-4 h-4 mr-2" />
+                  Add photo (camera)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Add photo (upload)
+                </Button>
+              </div>
             </div>
           ) : showCameraPermissionUI ? (
             <CameraPermissionPrompt
@@ -445,28 +472,40 @@ export function SubmissionForm() {
               isRequesting={requestingCamera}
             />
           ) : (
-            <button
-              type="button"
-              onClick={() => setShowCameraPermissionUI(true)}
-              className="w-full flex flex-col items-center justify-center gap-3 py-12 border-2 border-dashed border-border rounded-lg hover:border-primary/40 hover:bg-muted/50 transition-colors cursor-pointer"
-            >
-              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary">
-                <ImageIcon className="w-6 h-6" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-medium text-foreground">
-                  Tap to take a photo
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Use your camera to capture the site
-                </p>
-              </div>
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => setShowCameraPermissionUI(true)}
+                className="w-full flex flex-col items-center justify-center gap-3 py-12 border-2 border-dashed border-border rounded-lg hover:border-primary/40 hover:bg-muted/50 transition-colors cursor-pointer"
+              >
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary">
+                  <ImageIcon className="w-6 h-6" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">
+                    Tap to take a photo
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Use your camera to capture the site
+                  </p>
+                </div>
+              </button>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImageIcon className="w-4 h-4 mr-2" />
+                Or choose photo from device
+              </Button>
+            </div>
           )}
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             className="hidden"
             onChange={handlePhotoCapture}
           />
