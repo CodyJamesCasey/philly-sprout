@@ -6,28 +6,28 @@ const steps = [
     step: "01",
     title: "Photograph a Site",
     description:
-      "Find a potential tree pit on your block. Open Philly Sprout and snap a photo — the app captures your GPS location automatically.",
+      "Identify a candidate for street tree planting. Open Philly Sprout and snap a photo — the app captures your GPS location automatically.",
   },
   {
     icon: Brain,
     step: "02",
     title: "AI Pre-Screening",
     description:
-      "Our Claude Vision AI analyzes the photo for pit size, clearance from driveways, utility lines, and other PHS criteria — in seconds.",
+      "AI analyzes the photo for pit size, clearance from driveways, utility lines, and other PHS criteria — in seconds.",
   },
   {
     icon: FileCheck,
     step: "03",
     title: "Review & Confirm",
     description:
-      "Review the AI assessment, override any unclear judgments, and complete the property owner attestation form.",
+      "Review the AI assessment, override any unclear judgments, and submit your site record.",
   },
   {
     icon: TreePine,
     step: "04",
     title: "Submit to PHS",
     description:
-      "Your verified, AI-assisted site record is ready to support the official PHS TreeVitalize application. Help a tree find its home.",
+      "Your submission helps to quickly identify candidate sites and target outreach.",
   },
 ];
 
@@ -41,7 +41,7 @@ export function HowItWorks() {
             How It Works
           </span>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
-            From sidewalk to submission in minutes
+            Is that spot a good candidate for a street tree? Find out in minutes
           </h2>
         </div>
 

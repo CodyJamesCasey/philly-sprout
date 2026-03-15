@@ -20,7 +20,7 @@ export default function Page() {
             {[
               { icon: Camera, text: "Photograph potential tree planting sites on your block" },
               { icon: TreePine, text: "Get instant AI-powered site pre-screening" },
-              { icon: MapPin, text: "Submit verified sites to PHS TreeVitalize" },
+              { icon: MapPin, text: "Submit verified sites to PHS" },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-start gap-3">
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary-foreground/20 flex items-center justify-center">

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Philly Sprout — Plant a Tree in Philadelphia",
   description:
-    "Help grow Philadelphia's urban tree canopy. Submit street tree planting sites, get AI-assisted pre-screening, and support the PHS TreeVitalize program.",
+    "Help grow Philadelphia's urban tree canopy. Submit street tree planting sites, get AI-assisted pre-screening, and support PHS.",
 };
 
 const geistSans = Geist({
