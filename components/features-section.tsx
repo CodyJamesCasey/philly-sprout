@@ -36,7 +36,7 @@ export function FeaturesSection() {
             Why Philly Sprout
           </span>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground">
-            Know before you apply
+            Identify candidates. Grow Philly's canopy.
           </h2>
         </div>
 
