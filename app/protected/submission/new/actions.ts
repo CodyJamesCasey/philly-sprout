@@ -14,6 +14,12 @@ export async function createSubmission(
 ): Promise<SubmissionState> {
   const supabase = await createClient();
 
+  const { data: authData, error: authError } =
+    await supabase.auth.getClaims();
+  if (authError || !authData?.claims) {
+    redirect("/auth/login");
+  }
+
   const latitude = formData.get("latitude");
   const longitude = formData.get("longitude");
 
@@ -22,6 +28,7 @@ export async function createSubmission(
   }
 
   const row = {
+    user_id: authData.claims.sub as string,
     latitude: parseFloat(latitude as string),
     longitude: parseFloat(longitude as string),
     street_address: (formData.get("street_address") as string) || null,

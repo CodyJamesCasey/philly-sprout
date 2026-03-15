@@ -2,7 +2,7 @@ import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Leaf } from "lucide-react";
+import { Leaf, Map } from "lucide-react";
 
 export default function ProtectedLayout({
   children,
@@ -23,6 +23,13 @@ export default function ProtectedLayout({
               <span className="font-bold text-base">Philly Sprout</span>
             </Link>
             <div className="flex items-center gap-2">
+              <Link
+                href="/protected/map"
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors px-2 py-1.5 rounded-md hover:bg-accent"
+              >
+                <Map className="h-4 w-4" />
+                <span className="hidden sm:inline text-sm">Map</span>
+              </Link>
               <ThemeSwitcher />
               <Suspense>
                 <AuthButton />

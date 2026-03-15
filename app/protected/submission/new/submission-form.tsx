@@ -20,6 +20,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
+import { CameraCaptureView } from "@/components/camera-capture-view";
+import { CameraPermissionPrompt } from "@/components/camera-permission-prompt";
 import { createSubmission, type SubmissionState } from "./actions";
 
 type GeoPermissionState = "unknown" | "granted" | "prompt" | "denied" | "unsupported";
@@ -61,10 +64,17 @@ export function SubmissionForm() {
   );
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [showCameraPermissionUI, setShowCameraPermissionUI] = useState(false);
+  const [requestingCamera, setRequestingCamera] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraUnsupported, setCameraUnsupported] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locatingGps, setLocatingGps] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [requestingCamera, setRequestingCamera] = useState(false);
   const [geoPermission, setGeoPermission] = useState<GeoPermissionState>("unknown");
   const [platform, setPlatform] = useState<MobilePlatform>("other");
   const [isSafari, setIsSafari] = useState(false);
@@ -217,39 +227,139 @@ export function SubmissionForm() {
     );
   }
 
-  function handlePhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
+  async function uploadPhotoFile(file: File) {
+    setPhotoError(null);
+    setPhotoPreview(URL.createObjectURL(file));
+    setUploadingPhoto(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user) {
+        setPhotoError("You must be signed in to upload a photo.");
+        setPhotoPreview(null);
+        return;
+      }
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("tree-spots").upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+      if (error) {
+        const needsBucket =
+          error.message?.toLowerCase().includes("bucket") ||
+          error.message?.toLowerCase().includes("not found") ||
+          error.message?.includes("400");
+        const hint = needsBucket
+          ? " Ensure the tree-spots bucket has policies allowing authenticated uploads in Supabase Dashboard > Storage."
+          : "";
+        setPhotoError(`${error.message}${hint}`);
+        setPhotoPreview(null);
+        return;
+      }
+      const { data } = supabase.storage.from("tree-spots").getPublicUrl(path);
+      setPhotoUrl(data.publicUrl);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Upload failed.");
+      setPhotoPreview(null);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  }
+
+  async function handlePhotoCapture(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setPhotoPreview(url);
+    await uploadPhotoFile(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function clearPhoto() {
     setPhotoPreview(null);
+    setPhotoUrl(null);
+    setPhotoError(null);
+    setCameraStream(null);
+    setCameraUnsupported(false);
+    setShowCameraPermissionUI(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleTapToTakePhoto() {
     if (requestingCamera) return;
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setShowCameraPermissionUI(false);
+      setCameraUnsupported(true);
+      setPhotoError("Camera is not supported. Use the button below to choose a photo from your device.");
+      setRequestingCamera(false);
+      return;
+    }
     setRequestingCamera(true);
+    setPhotoError(null);
     try {
-      if (navigator.mediaDevices?.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        stream.getTracks().forEach((track) => track.stop());
-      }
-    } catch {
-      // Permission denied or unsupported — still open file input as fallback
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+      });
+      setShowCameraPermissionUI(false);
+      setCameraStream(stream);
+    } catch (err) {
+      setShowCameraPermissionUI(false);
+      const isDenied =
+        err instanceof DOMException &&
+        (err.name === "NotAllowedError" || err.name === "PermissionDeniedError");
+      setPhotoError(
+        isDenied
+          ? "Camera access denied. Use the button below to try again or choose a photo."
+          : "Could not access camera. Use the button below to try again or choose a photo.",
+      );
     } finally {
       setRequestingCamera(false);
-      fileInputRef.current?.click();
     }
   }
 
+  function closeCamera() {
+    cameraStream?.getTracks().forEach((track) => track.stop());
+    setCameraStream(null);
+  }
+
+  function handleCapturePhoto() {
+    const video = videoRef.current;
+    if (!video || !cameraStream || video.readyState !== 4) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) return;
+        closeCamera();
+        const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+        await uploadPhotoFile(file);
+      },
+      "image/jpeg",
+      0.9,
+    );
+  }
+
+  useEffect(() => {
+    if (cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+    }
+    return () => {
+      cameraStream?.getTracks().forEach((track) => track.stop());
+    };
+  }, [cameraStream]);
+
   return (
     <form action={formAction} className="flex flex-col gap-6">
-      {/* Hidden GPS fields */}
+      {/* Hidden fields */}
       <input type="hidden" name="latitude" value={location?.lat ?? ""} />
       <input type="hidden" name="longitude" value={location?.lng ?? ""} />
+      <input type="hidden" name="photo_url" value={photoUrl ?? ""} />
 
       {/* ── Photo Capture ── */}
       <Card>
@@ -263,8 +373,54 @@ export function SubmissionForm() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {photoPreview ? (
+          {photoError && (
+            <div className="space-y-3 mb-3">
+              <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+                {photoError}
+              </div>
+              <div className="flex gap-2">
+                {!cameraUnsupported && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => {
+                      setPhotoError(null);
+                      handleTapToTakePhoto();
+                    }}
+                  >
+                    <Camera className="w-4 h-4 mr-2" />
+                    Retry
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cameraUnsupported ? "w-full" : "flex-1"}
+                  onClick={() => {
+                    setPhotoError(null);
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  <ImageIcon className="w-4 h-4 mr-2" />
+                  Choose photo
+                </Button>
+              </div>
+            </div>
+          )}
+          {cameraStream ? (
+            <CameraCaptureView
+              ref={videoRef}
+              onCapture={handleCapturePhoto}
+              onCancel={closeCamera}
+            />
+          ) : photoPreview ? (
             <div className="relative">
+              {uploadingPhoto && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-lg z-10">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              )}
               <img
                 src={photoPreview}
                 alt="Site preview"
@@ -276,27 +432,29 @@ export function SubmissionForm() {
                 size="icon"
                 className="absolute top-2 right-2 h-8 w-8"
                 onClick={clearPhoto}
+                disabled={uploadingPhoto}
               >
                 <X className="w-4 h-4" />
               </Button>
             </div>
+          ) : showCameraPermissionUI ? (
+            <CameraPermissionPrompt
+              onAllow={handleTapToTakePhoto}
+              onCancel={() => setShowCameraPermissionUI(false)}
+              isRequesting={requestingCamera}
+            />
           ) : (
             <button
               type="button"
-              onClick={handleTapToTakePhoto}
-              disabled={requestingCamera}
-              className="w-full flex flex-col items-center justify-center gap-3 py-12 border-2 border-dashed border-border rounded-lg hover:border-primary/40 hover:bg-muted/50 transition-colors cursor-pointer disabled:opacity-70 disabled:cursor-wait"
+              onClick={() => setShowCameraPermissionUI(true)}
+              className="w-full flex flex-col items-center justify-center gap-3 py-12 border-2 border-dashed border-border rounded-lg hover:border-primary/40 hover:bg-muted/50 transition-colors cursor-pointer"
             >
               <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 text-primary">
-                {requestingCamera ? (
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                ) : (
-                  <ImageIcon className="w-6 h-6" />
-                )}
+                <ImageIcon className="w-6 h-6" />
               </div>
               <div className="text-center">
                 <p className="text-sm font-medium text-foreground">
-                  {requestingCamera ? "Requesting camera…" : "Tap to take a photo"}
+                  Tap to take a photo
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Use your camera to capture the site
