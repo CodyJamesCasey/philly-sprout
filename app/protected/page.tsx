@@ -1,15 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Suspense } from "react";
-import { TreePine, MapPin, FileCheck, PlusCircle } from "lucide-react";
+import { TreePine, MapPin, FileCheck, PlusCircle, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
 
 async function WelcomeBanner() {
@@ -46,8 +40,16 @@ const quickActions = [
     icon: FileCheck,
     title: "My Submissions",
     description: "View the status of all your previously submitted sites.",
-    href: "#",
+    href: "/protected/submissions",
     cta: "View All",
+    primary: false,
+  },
+  {
+    icon: Globe,
+    title: "All Submissions",
+    description: "Browse every submitted site across the community.",
+    href: "/protected/submissions?view=all",
+    cta: "Browse",
     primary: false,
   },
   {
